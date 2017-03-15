@@ -33,8 +33,19 @@ namespace EventSourcing.Poc.Domain {
             }
         }
 
-        public Task<IReadOnlyCollection<IAction>> Handle(PostCreated @event) {
-            throw new NotImplementedException();
+        public async Task<IReadOnlyCollection<IAction>> Handle(PostCreated @event) {
+            var author = new Author
+            {
+                Id = Guid.NewGuid(),
+                Firstname = "Anonymous",
+                Lastname = "Anonymous"
+            };
+            using (var authorMutex = _entityMutexFactory.Create(author))
+            {
+                await authorMutex.LockAsync();
+                Console.WriteLine("handle post created event.");
+                return new List<IAction>();
+            }
         }
     }
 }

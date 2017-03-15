@@ -6,7 +6,14 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Processing\EventSourcing.Poc.EventProcessing\EventSourcing.Poc.EventProcessing.csproj" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="1.1.1" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="1.1.0" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="1.1.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\EventSourcing.Poc.Domain\EventSourcing.Poc.Domain.csproj" />
+    <ProjectReference Include="..\..\Processing\EventSourcing.Poc.CommandProcessing\EventSourcing.Poc.Processing.csproj" />
   </ItemGroup>
 
 </Project>

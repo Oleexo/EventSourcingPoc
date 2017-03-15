@@ -2,13 +2,13 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using EventSourcing.Poc.CommandProcessing;
-using EventSourcing.Poc.CommandProcessing.Options;
-using EventSourcing.Poc.Commons;
 using EventSourcing.Poc.EventSourcing;
 using EventSourcing.Poc.EventSourcing.Command;
-using EventSourcing.Poc.EventSourcing.Job;
+using EventSourcing.Poc.EventSourcing.Jobs;
 using EventSourcing.Poc.EventSourcing.Utils;
+using EventSourcing.Poc.Processing;
+using EventSourcing.Poc.Processing.Jobs;
+using EventSourcing.Poc.Processing.Options;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -40,7 +40,9 @@ namespace EventSourcing.Poc.Api
 
             services.Configure<CommandStoreOptions>(Configuration.GetSection("CommandStore"));
             services.Configure<CommandQueueOptions>(Configuration.GetSection("CommandQueue"));
+            services.Configure<JobHandlerOptions>(Configuration.GetSection("JobHandler"));
 
+            services.AddTransient<IJobHandler, JobHandler>();
             services.AddTransient<ICommandDispatcher, CommandDispatcher>();
             services.AddTransient<ICommandQueue, CommandQueue>();
             services.AddTransient<ICommandStore, CommandStore>();

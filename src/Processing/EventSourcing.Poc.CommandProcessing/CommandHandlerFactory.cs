@@ -7,7 +7,7 @@ using EventSourcing.Poc.EventSourcing.Exceptions;
 using EventSourcing.Poc.EventSourcing.Utils;
 using EventSourcing.Poc.Messages;
 
-namespace EventSourcing.Poc.CommandProcessing {
+namespace EventSourcing.Poc.Processing {
     public class CommandHandlerFactory {
         private static IReadOnlyDictionary<Type, Type> _commandToCommandHandlers;
         private readonly IServiceProvider _serviceProvider;

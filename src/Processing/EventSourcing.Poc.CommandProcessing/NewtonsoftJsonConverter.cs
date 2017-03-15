@@ -1,7 +1,7 @@
 ﻿using System;
 using EventSourcing.Poc.EventSourcing.Utils;
 
-namespace EventSourcing.Poc.Commons
+namespace EventSourcing.Poc.Processing
 {
     public class NewtonsoftJsonConverter : IJsonConverter
     {

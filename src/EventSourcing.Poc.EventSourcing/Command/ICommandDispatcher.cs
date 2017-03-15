@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using EventSourcing.Poc.EventSourcing.Job;
+using EventSourcing.Poc.EventSourcing.Jobs;
 using EventSourcing.Poc.Messages;
 using JetBrains.Annotations;
 

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using EventSourcing.Poc.EventSourcing.Command;
-using EventSourcing.Poc.EventSourcing.Job;
+using EventSourcing.Poc.EventSourcing.Jobs;
 using EventSourcing.Poc.Messages.Post;
 using Microsoft.AspNetCore.Mvc;
 

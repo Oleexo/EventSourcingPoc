@@ -11,7 +11,7 @@ namespace EventSourcing.Poc.CommandProcessing.Runner
                 .SetBasePath(Directory.GetCurrentDirectory())
                 .AddJsonFile("appsettings.json")
                 .AddJsonFile($"appsettings.Development.json", optional: true);
-            var runner = new Runner(builder.Build());
+            var runner = new CommandRunner(builder.Build());
             runner.Run();
             Console.WriteLine("Press Key to exit.");
             Console.ReadKey();

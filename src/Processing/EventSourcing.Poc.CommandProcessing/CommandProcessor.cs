@@ -1,21 +1,38 @@
-﻿using System.Threading.Tasks;
-using EventSourcing.Poc.EventSourcing.Command;
+﻿using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using EventSourcing.Poc.EventSourcing.Event;
+using EventSourcing.Poc.EventSourcing.Jobs;
 using EventSourcing.Poc.EventSourcing.Wrapper;
 using EventSourcing.Poc.Messages;
-using Microsoft.Azure.Amqp;
 
-namespace EventSourcing.Poc.CommandProcessing {
+namespace EventSourcing.Poc.Processing {
     public class CommandProcessor {
         private readonly CommandHandlerFactory _commandHandlerFactory;
+        private readonly IEventDispatcher _eventDispatcher;
+        private readonly IJobHandler _jobHandler;
 
-        public CommandProcessor(CommandHandlerFactory commandHandlerFactory) {
+        public CommandProcessor(CommandHandlerFactory commandHandlerFactory, 
+            IEventDispatcher eventDispatcher, 
+            IJobHandler jobHandler) {
             _commandHandlerFactory = commandHandlerFactory;
+            _eventDispatcher = eventDispatcher;
+            _jobHandler = jobHandler;
         }
 
-        public Task Process<TCommand>(ICommandWrapper<TCommand> commandWrapper) where TCommand : ICommand {
+        public async Task Process<TCommand>(ICommandWrapper<TCommand> commandWrapper) where TCommand : ICommand {
             var commandHandler = _commandHandlerFactory.Resolve<TCommand>();
-            var events = commandHandler.Handle(commandWrapper.Command);
-            return Task.CompletedTask;
+            IReadOnlyCollection<IEvent> events;
+            try {
+                events = await commandHandler.Handle(commandWrapper.Command);
+            }
+            catch (Exception ex) {
+                if (commandWrapper.IsLinkToJob) {
+                    await _jobHandler.Fail(commandWrapper, ex);
+                }
+                return;
+            }
+            await _eventDispatcher.Send(commandWrapper, events);
         }
     }
 }

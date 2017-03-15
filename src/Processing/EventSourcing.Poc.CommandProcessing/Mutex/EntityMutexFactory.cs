@@ -6,7 +6,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
 
-namespace EventSourcing.Poc.Commons.Mutex {
+namespace EventSourcing.Poc.Processing.Mutex {
     public class EntityMutexFactory : IEntityMutexFactory {
         private readonly CloudTable _entityTable;
 

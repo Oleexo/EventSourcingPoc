@@ -1,4 +1,5 @@
 ﻿using System;
+using EventSourcing.Poc.EventSourcing.Jobs;
 using EventSourcing.Poc.Messages;
 
 namespace EventSourcing.Poc.EventSourcing.Wrapper {
@@ -12,6 +13,12 @@ namespace EventSourcing.Poc.EventSourcing.Wrapper {
         }
 
         public Guid Id { get; set; }
+        public bool IsLinkToJob => JobId.HasValue;
+        public Guid? JobId { get; set; }
+        public void LinkToJob(IJob job) {
+            JobId = job.Id;
+        }
+
         public TCommand Command { get; set; }
     }
 }

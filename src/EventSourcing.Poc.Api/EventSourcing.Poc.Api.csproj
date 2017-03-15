@@ -18,9 +18,8 @@
     <DotNetCliToolReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Tools" Version="1.0.0" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\EventSourcing.Poc.Commons\EventSourcing.Poc.Commons.csproj" />
     <ProjectReference Include="..\EventSourcing.Poc.EventSourcing\EventSourcing.Poc.EventSourcing.csproj" />
-    <ProjectReference Include="..\Processing\EventSourcing.Poc.CommandProcessing\EventSourcing.Poc.CommandProcessing.csproj" />
+    <ProjectReference Include="..\Processing\EventSourcing.Poc.CommandProcessing\EventSourcing.Poc.Processing.csproj" />
   </ItemGroup>
 
 </Project>

@@ -5,22 +5,22 @@ using EventSourcing.Poc.EventSourcing;
 using EventSourcing.Poc.EventSourcing.Utils;
 using EventSourcing.Poc.EventSourcing.Wrapper;
 using EventSourcing.Poc.Processing.Generic;
-using EventSourcing.Poc.Processing.Options;
 using Microsoft.Extensions.Options;
 using Microsoft.WindowsAzure.Storage.File;
 
 namespace EventSourcing.Poc.Processing {
-    public class CommandStore : FileStore<ICommandWrapper>, ICommandStore {
-        public CommandStore(IOptions<CommandStoreOptions> options, IJsonConverter jsonConverter)
+    public class EventStore : FileStore<IEventWrapper>, IEventStore {
+        public EventStore(IOptions<EventStoreOptions> options,
+            IJsonConverter jsonConverter)
             : base(options.Value.ConnectionString, options.Value.Name, jsonConverter) {
         }
 
-        public async Task Save(ICommandWrapper commandWrapped) {
-            await SaveAsync(commandWrapped);
+        public async Task Save(IEventWrapper wrappedEvent) {
+            await SaveAsync(wrappedEvent);
         }
 
-        public async Task Save(IReadOnlyCollection<ICommandWrapper> commandWrappeds) {
-            await SaveAsync(commandWrappeds);
+        public async Task Save(IReadOnlyCollection<IEventWrapper> wrappedEvents) {
+            await SaveAsync(wrappedEvents);
         }
 
         protected override async Task<CloudFileDirectory> GetDestinationFolder(CloudFileShare fileShare) {
@@ -35,8 +35,13 @@ namespace EventSourcing.Poc.Processing {
             return dayFolder;
         }
 
-        protected override string CreateFileName(ICommandWrapper @object) {
+        protected override string CreateFileName(IEventWrapper @object) {
             return $"{@object.Id}.json";
         }
+    }
+
+    public class EventStoreOptions {
+        public string ConnectionString { get; set; }
+        public string Name { get; set; }
     }
 }
