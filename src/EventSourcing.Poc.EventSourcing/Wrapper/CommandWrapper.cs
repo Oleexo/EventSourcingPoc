@@ -21,4 +21,13 @@ namespace EventSourcing.Poc.EventSourcing.Wrapper {
 
         public TCommand Command { get; set; }
     }
+
+    public class ActionWrapper<TCommand> : CommandWrapper<TCommand>, IActionWrapper<TCommand> 
+        where TCommand : IAction {
+        public ActionWrapper(TCommand command) : base(command) {
+        }
+
+        public ActionWrapper() {
+        }
+    }
 }

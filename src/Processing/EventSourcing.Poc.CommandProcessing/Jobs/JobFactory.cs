@@ -20,8 +20,8 @@ namespace EventSourcing.Poc.Processing.Jobs {
         public async Task<IJob> Create(IReadOnlyCollection<ICommandWrapper> wrappedCommands) {
             var job = new Job {
                 Id = Guid.NewGuid(),
-                CommandIdentifiers = wrappedCommands
-                    .Select(wc => wc.Id)
+                CommandInformations = wrappedCommands
+                    .Select(wc => new CommandInformation(wc.Id))
                     .ToList()
             };
             foreach (var wrappedCommand in wrappedCommands) {

@@ -1,18 +1,23 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
+using EventSourcing.Poc.EventSourcing.Command;
 using EventSourcing.Poc.EventSourcing.Jobs;
 using EventSourcing.Poc.EventSourcing.Wrapper;
 using EventSourcing.Poc.Messages;
+using Microsoft.Azure.Amqp;
 
 namespace EventSourcing.Poc.Processing {
     public class EventProcessor {
         private readonly EventHandlerFactory _eventHandlerFactory;
         private readonly IJobHandler _jobHandler;
+        private readonly IActionDispatcher _actionDispatcher;
 
-        public EventProcessor(EventHandlerFactory eventHandlerFactory, IJobHandler jobHandler) {
+        public EventProcessor(EventHandlerFactory eventHandlerFactory, IJobHandler jobHandler, IActionDispatcher actionDispatcher) {
             _eventHandlerFactory = eventHandlerFactory;
             _jobHandler = jobHandler;
+            _actionDispatcher = actionDispatcher;
         }
 
         public async Task Process<TEvent>(IEventWrapper<TEvent> eventWrapper) where TEvent : IEvent {
@@ -23,9 +28,15 @@ namespace EventSourcing.Poc.Processing {
             }
             catch (Exception ex) {
                 if (eventWrapper.IsLinkToJob) {
-                    // todo
+                    await _jobHandler.Fail(eventWrapper, ex);
                 }
                 return;
+            }
+            if (actions.Any()) {
+                await _actionDispatcher.Send(eventWrapper, actions);
+            }
+            else {
+                await _jobHandler.Done(eventWrapper);
             }
         }
     }

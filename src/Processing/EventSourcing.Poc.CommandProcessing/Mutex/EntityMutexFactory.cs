@@ -1,90 +1,62 @@
 ﻿using System;
-using System.Threading.Tasks;
+using System.Collections.Generic;
 using EventSourcing.Poc.EventSourcing;
 using EventSourcing.Poc.EventSourcing.Mutex;
+using EventSourcing.Poc.Processing.Options;
+using Microsoft.Azure.StorageAccount;
 using Microsoft.Extensions.Options;
-using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Table;
 
 namespace EventSourcing.Poc.Processing.Mutex {
     public class EntityMutexFactory : IEntityMutexFactory {
-        private readonly CloudTable _entityTable;
+        private readonly IMutexGarbageCollector _mutexGc;
+        private readonly TableClient _entityTable;
 
-        public EntityMutexFactory(IOptions<EntityMutexFactoryOptions> options) {
-            _entityTable = CloudStorageAccount.Parse(options.Value.ConnectionString)
-                .CreateCloudTableClient()
-                .GetTableReference(options.Value.Name);
+        public EntityMutexFactory(IOptions<EntityMutexFactoryOptions> options, IMutexGarbageCollector mutexGc) {
+            _mutexGc = mutexGc;
+            _entityTable = new TableClient(options.Value.ConnectionString, options.Value.Name);
             _entityTable.CreateIfNotExistsAsync().Wait();
+            _mutexGc = mutexGc;
         }
 
-        public EntityMutexFactory(CloudTable entityTable) {
+        public EntityMutexFactory(TableClient entityTable, IMutexGarbageCollector mutexGc) {
             _entityTable = entityTable;
             _entityTable.CreateIfNotExistsAsync().Wait();
+            _mutexGc = mutexGc;
         }
 
         public IMutexAsync Create<TKey>(IEntity<TKey> entityToLock) {
-            return new EntityMutex<TKey>(entityToLock, _entityTable);
+            var entityMutex = new EntityMutex<TKey>(entityToLock, _entityTable);
+            _mutexGc.Register(entityMutex);
+            return entityMutex;
         }
     }
 
-    public class EntityMutex<TKey> : IMutexAsync {
-        private readonly CloudTable _entityTable;
-        private readonly string _type;
-        private readonly string _identifier;
+    public class MutexGarbageCollector : IMutexGarbageCollector {
+        private readonly ICollection<IDisposable> _mutexes;
 
-        public EntityMutex(IEntity<TKey> entityToLock, CloudTable entityTable) {
-            _entityTable = entityTable;
-            _type = entityToLock.GetType().FullName;
-            _identifier = entityToLock.Id.ToString();
+        public MutexGarbageCollector() {
+            _mutexes = new List<IDisposable>();
         }
 
-        public void Dispose() {
-            ReleaseAsync().Wait();
+        public void Register(IMutex mutex) {
+            _mutexes.Add(mutex);
         }
 
-        public async Task LockAsync() {
-            var retrieveOperation = TableOperation.Retrieve<EntityLockRow>(_type, _identifier);
-            TableResult tableResult = null;
-            do {
-                if (tableResult != null) {
-                    await Task.Delay(1000);
-                }
-                tableResult = await _entityTable.ExecuteAsync(retrieveOperation);
-            } while (tableResult.Result != null);
-            var insertOperation = TableOperation.Insert(new EntityLockRow {
-                PartitionKey = _type,
-                RowKey = _identifier,
-                Timestamp = DateTimeOffset.UtcNow
-            });
-            try {
-                await _entityTable.ExecuteAsync(insertOperation);
+        public void Register(IMutexAsync mutex)
+        {
+            _mutexes.Add(mutex);
+        }
+
+        public void Collect() {
+            foreach (var mutex in _mutexes) {
+                mutex.Dispose();
             }
-            catch (StorageException e) {
-                if (e.Message == "Conflict") {
-                    await LockAsync();
-                }
-                else {
-                    throw;
-                }
-            }
-        }
-
-        public async Task ReleaseAsync() {
-            var retrieveOperation = TableOperation.Retrieve<EntityLockRow>(_type, _identifier);
-            var tableResult = await _entityTable.ExecuteAsync(retrieveOperation);
-            if (tableResult.Result != null) {
-                var deleteOperation = TableOperation.Delete(tableResult.Result as EntityLockRow);
-                await _entityTable.ExecuteAsync(deleteOperation);
-            }
-        }
-
-        private class EntityLockRow : TableEntity {
-            
         }
     }
 
-    public class EntityMutexFactoryOptions {
-        public string ConnectionString { get; set; }
-        public string Name { get; set; }
+    public interface IMutexGarbageCollector {
+        void Register(IMutex mutex);
+        void Register(IMutexAsync mutex);
+        void Collect();
     }
 }

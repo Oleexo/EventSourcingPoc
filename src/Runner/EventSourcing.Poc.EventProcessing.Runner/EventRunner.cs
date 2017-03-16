@@ -1,6 +1,9 @@
-﻿using System.Reflection;
+﻿using System;
+using System.Reflection;
 using System.Threading.Tasks;
 using EventSourcing.Poc.Domain;
+using EventSourcing.Poc.EventSourcing;
+using EventSourcing.Poc.EventSourcing.Command;
 using EventSourcing.Poc.EventSourcing.Event;
 using EventSourcing.Poc.EventSourcing.Jobs;
 using EventSourcing.Poc.EventSourcing.Mutex;
@@ -34,6 +37,8 @@ namespace EventSourcing.Poc.EventProcessing.Runner {
                 options.CommandTableName = _configurationRoot.GetSection("JobHandler")["CommandTableName"];
                 options.EventTableName = _configurationRoot.GetSection("JobHandler")["EventTableName"];
                 options.ActionTableName = _configurationRoot.GetSection("JobHandler")["ActionTableName"];
+                options.ArchiveStorageName = _configurationRoot.GetSection("JobHandler")["ArchiveStorageName"];
+                options.ArchiveTableName = _configurationRoot.GetSection("JobHandler")["ArchiveTableName"];
             });
             serviceCollection.Configure<EventQueueOptions>(options => {
                 options.FileShareConnectionString =
@@ -42,15 +47,31 @@ namespace EventSourcing.Poc.EventProcessing.Runner {
                 options.QueueConnectionString = _configurationRoot.GetSection("EventQueue")["QueueConnectionString"];
                 options.QueueName = _configurationRoot.GetSection("EventQueue")["QueueName"];
             });
+            serviceCollection.Configure<CommandStoreOptions>(options => {
+                options.ConnectionString = _configurationRoot.GetSection("CommandStore")["ConnectionString"];
+                options.Name = _configurationRoot.GetSection("CommandStore")["Name"];
+            });
+            serviceCollection.Configure<CommandQueueOptions>(options => {
+                options.FileShareConnectionString =
+                    _configurationRoot.GetSection("CommandQueue")["FileShareConnectionString"];
+                options.FileShareName = _configurationRoot.GetSection("CommandQueue")["FileShareName"];
+                options.QueueConnectionString = _configurationRoot.GetSection("CommandQueue")["QueueConnectionString"];
+                options.QueueName = _configurationRoot.GetSection("CommandQueue")["QueueName"];
+            });
+            serviceCollection.AddTransient<ICommandQueue, CommandQueue>();
             serviceCollection.AddTransient<IEntityMutexFactory, EntityMutexFactory>();
             serviceCollection.AddTransient<IJsonConverter, NewtonsoftJsonConverter>();
             serviceCollection.AddTransient<IJobHandler, JobHandler>();
+            serviceCollection.AddTransient<PostHandler>();
+            serviceCollection.AddTransient<ICommandStore, CommandStore>();
+            serviceCollection.AddTransient<IActionDispatcher, ActionDispatcher>();
             serviceCollection.AddTransient<IEventQueue, EventQueue>();
             var serviceProvider = serviceCollection.BuildServiceProvider();
             var eventHandlerFactory = new EventHandlerFactory(serviceProvider);
-            var eventProcessor = new EventProcessor(eventHandlerFactory, serviceProvider.GetService<IJobHandler>());
+            var eventProcessor = new EventProcessor(eventHandlerFactory, serviceProvider.GetService<IJobHandler>(), serviceProvider.GetService<IActionDispatcher>());
             var commandProcessorType = eventProcessor.GetType().GetTypeInfo();
             var eventQueue = serviceProvider.GetService<IEventQueue>();
+            Console.WriteLine("Start listening...");
             eventQueue.RegisterMessageHandler(async (wrapper, token) => {
                 var eventType = wrapper.GetType().GetTypeInfo().GetGenericArguments()[0];
                 await (Task)commandProcessorType.GetMethod("Process")

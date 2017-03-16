@@ -1,4 +1,4 @@
 namespace EventSourcing.Poc.Messages {
-    public interface IAction {
+    public interface IAction : ICommand {
     }
 }

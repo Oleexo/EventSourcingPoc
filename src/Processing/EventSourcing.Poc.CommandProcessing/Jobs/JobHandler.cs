@@ -15,6 +15,7 @@ namespace EventSourcing.Poc.Processing.Jobs {
         private readonly CloudTable _actionTable;
         private readonly CloudTable _commandTable;
         private readonly CloudTable _eventTable;
+        private readonly JobArchive _jobArchive;
         private readonly CloudTable _jobTable;
         private readonly IJsonConverter _jsonConverter;
 
@@ -30,6 +31,8 @@ namespace EventSourcing.Poc.Processing.Jobs {
             _commandTable.CreateIfNotExistsAsync().Wait();
             _eventTable.CreateIfNotExistsAsync().Wait();
             _actionTable.CreateIfNotExistsAsync().Wait();
+            _jobArchive = new JobArchive(options.Value.ConnectionString, options.Value.ArchiveStorageName,
+                options.Value.ArchiveTableName, jsonConverter);
         }
 
         public async Task Initialize(IJob job, ICommandWrapper wrappedCommand) {
@@ -41,18 +44,17 @@ namespace EventSourcing.Poc.Processing.Jobs {
                 PartitionKey = "Job",
                 RowKey = job.Id.ToString(),
                 Timestamp = DateTimeOffset.UtcNow,
-                IsStarted = job.IsStarted,
                 IsDone = job.IsDone,
-                Commands = _jsonConverter.Serialize(job.CommandIdentifiers)
+                CommandIdentifiers = _jsonConverter.Serialize(job.CommandInformations.Select(ci => ci.Id))
             };
             await _jobTable.ExecuteAsync(TableOperation.Insert(jobRow));
             var batchOperation = new TableBatchOperation();
             var commandRows = wrappedCommands.Select(wc => new CommandRow {
-                PartitionKey = "Command",
-                RowKey = wc.Id.ToString(),
-                IsStarted = job.IsStarted,
-                IsDone = job.IsDone
-            }).ToArray();
+                    PartitionKey = "Command",
+                    RowKey = wc.Id.ToString(),
+                    IsDone = job.IsDone
+                })
+                .ToArray();
             foreach (var commandRow in commandRows) {
                 batchOperation.Add(TableOperation.Insert(commandRow));
             }
@@ -60,12 +62,7 @@ namespace EventSourcing.Poc.Processing.Jobs {
         }
 
         public async Task Fail(ICommandWrapper commandWrapper, Exception exception) {
-            var retrieveOperation = TableOperation.Retrieve<CommandRow>("Command", commandWrapper.Id.ToString());
-            var tableResult = await _commandTable.ExecuteAsync(retrieveOperation);
-            var commandRow = tableResult.Result as CommandRow;
-            if (commandRow == null) {
-                throw new Exception();
-            }
+            var commandRow = await Retrieve<CommandRow>(commandWrapper.Id.ToString());
             commandRow.IsStarted = true;
             commandRow.IsDone = true;
             commandRow.ExecutionDate = DateTimeOffset.UtcNow;
@@ -74,28 +71,33 @@ namespace EventSourcing.Poc.Processing.Jobs {
             await _commandTable.ExecuteAsync(replaceOperation);
         }
 
-        public async Task Associate(ICommandWrapper commandWrapper, IReadOnlyCollection<IEventWrapper> eventWrappers) {
-            var retrieveOperation = TableOperation.Retrieve<CommandRow>("Command", commandWrapper.Id.ToString());
-            var tableResult = await _commandTable.ExecuteAsync(retrieveOperation);
-            var commandRow = tableResult.Result as CommandRow;
-            if (commandRow == null)
-            {
-                throw new Exception();
-            }
+        public async Task Fail(IEventWrapper eventWrapper, Exception exception) {
+            var eventRow = await Retrieve<EventRow>(eventWrapper.Id.ToString());
+            eventRow.IsStarted = true;
+            eventRow.IsDone = true;
+            eventRow.ExecutionDate = DateTimeOffset.UtcNow;
+            eventRow.IsSuccessful = false;
+            var replaceOperation = TableOperation.Replace(eventRow);
+            await _eventTable.ExecuteAsync(replaceOperation);
+        }
+
+        public async Task Associate(ICommandWrapper commandParent, IReadOnlyCollection<IEventWrapper> eventWrappers) {
+            var commandRow = await Retrieve<CommandRow>(commandParent.Id.ToString());
             commandRow.IsStarted = true;
-            commandRow.ExecutionDate =DateTimeOffset.UtcNow;
+            commandRow.ExecutionDate = DateTimeOffset.UtcNow;
+            commandRow.IsDone = true;
+            commandRow.IsSuccessful = true;
             if (eventWrappers.Any()) {
                 commandRow.Events = _jsonConverter.Serialize(eventWrappers.Select(e => e.Id));
             }
-            else {
-                commandRow.IsDone = true;
-                commandRow.IsSuccessful = true;
-            }
             var replaceOperation = TableOperation.Replace(commandRow);
             await _commandTable.ExecuteAsync(replaceOperation);
+            if (!eventWrappers.Any()) {
+                return;
+            }
             var batchOperation = new TableBatchOperation();
             foreach (var eventWrapper in eventWrappers) {
-                eventWrapper.JobId = commandWrapper.JobId;
+                eventWrapper.JobId = commandParent.JobId;
                 batchOperation.Add(TableOperation.Insert(new EventRow {
                     RowKey = eventWrapper.Id.ToString(),
                     PartitionKey = "Event",
@@ -110,8 +112,193 @@ namespace EventSourcing.Poc.Processing.Jobs {
             await _eventTable.ExecuteBatchAsync(batchOperation);
         }
 
-        public Task<IJob> GetInformation(string jobId) {
-            throw new NotImplementedException();
+        public async Task Associate(IEventWrapper eventParent, IReadOnlyCollection<IActionWrapper> wrappedActions) {
+            var eventRow = await Retrieve<EventRow>(eventParent.Id.ToString());
+            eventRow.IsStarted = true;
+            eventRow.IsDone = true;
+            eventRow.IsSuccessful = true;
+            eventRow.ExecutionDate = DateTimeOffset.UtcNow;
+            if (wrappedActions.Any()) {
+                eventRow.Actions = _jsonConverter.Serialize(wrappedActions.Select(a => a.Id));
+            }
+            var replaceOperation = TableOperation.Replace(eventRow);
+            await _eventTable.ExecuteAsync(replaceOperation);
+            if (!wrappedActions.Any()) {
+                return;
+            }
+            var batchOperation = new TableBatchOperation();
+            foreach (var wrappedAction in wrappedActions) {
+                wrappedAction.JobId = eventParent.JobId;
+                batchOperation.Add(TableOperation.Insert(new CommandRow {
+                    RowKey = wrappedAction.Id.ToString(),
+                    PartitionKey = "Command",
+                    Timestamp = DateTimeOffset.UtcNow,
+                    IsDone = false,
+                    IsStarted = false,
+                    IsSuccessful = false,
+                    ExecutionDate = null,
+                    ParentId = eventParent.Id
+                }));
+            }
+            await _commandTable.ExecuteBatchAsync(batchOperation);
+        }
+
+
+        public async Task Done(ICommandWrapper commandWrapper) {
+            var commandRow = await Retrieve<CommandRow>(commandWrapper.Id.ToString());
+            commandRow.IsDone = true;
+            commandRow.IsSuccessful = true;
+            commandRow.IsStarted = true;
+            commandRow.ExecutionDate = DateTimeOffset.UtcNow;
+            var replaceOperation = TableOperation.Replace(commandRow);
+            await _commandTable.ExecuteAsync(replaceOperation);
+        }
+
+        public async Task Done(IEventWrapper eventWrapper) {
+            var eventRow = await Retrieve<EventRow>(eventWrapper.Id.ToString());
+            eventRow.IsDone = true;
+            eventRow.IsSuccessful = true;
+            eventRow.IsStarted = true;
+            eventRow.ExecutionDate = DateTimeOffset.UtcNow;
+            var replaceOperation = TableOperation.Replace(eventRow);
+            await _eventTable.ExecuteAsync(replaceOperation);
+        }
+
+
+        public async Task<IJob> GetInformation(string jobId) {
+            var jobArchived = await _jobArchive.Get(Guid.Parse(jobId));
+            if (jobArchived != null) {
+                return jobArchived;
+            }
+            var jobRow = await Retrieve<JobRow>(jobId);
+            var job = await From(jobRow);
+            if (!job.CheckAllDependenciesDone()) {
+                return job;
+            }
+            job.IsDone = true;
+            await _jobArchive.Archive(job);
+            await CleanupTables(job);
+            return job;
+        }
+
+        private async Task CleanupTables(IJob job) {
+            foreach (var jobCommandInformation in job.CommandInformations) {
+                await CleanupTables(jobCommandInformation);
+            }
+            var jobRow = await Retrieve<JobRow>(job.Id.ToString());
+            var deleteJobOperation = TableOperation.Delete(jobRow);
+            await _jobTable.ExecuteAsync(deleteJobOperation);
+        }
+
+        private async Task CleanupTables(CommandInformation commandInformation) {
+            foreach (var eventInformation in commandInformation.EventInformations) {
+                await CleanupTables(eventInformation);
+            }
+            var commandRow = await Retrieve<CommandRow>(commandInformation.Id.ToString());
+            var deleteCommandOperation = TableOperation.Delete(commandRow);
+            await _commandTable.ExecuteAsync(deleteCommandOperation);
+        }
+
+        private async Task CleanupTables(EventInformation eventInformation) {
+            var eventRow = await Retrieve<EventRow>(eventInformation.Id.ToString());
+            var deleteEventOperation = TableOperation.Delete(eventRow);
+            await _eventTable.ExecuteAsync(deleteEventOperation);
+        }
+
+        private async Task<IReadOnlyCollection<CommandInformation>> GetCommandInformation(
+            IReadOnlyCollection<Guid> identifiers) {
+            var result = new List<CommandInformation>();
+            foreach (var commandId in identifiers) {
+                var commandRow = await Retrieve<CommandRow>(commandId.ToString());
+                result.Add(await From(commandRow));
+            }
+            return result;
+        }
+
+        private async Task<IReadOnlyCollection<EventInformation>> GetEventInformation(
+            IReadOnlyCollection<Guid> identifiers) {
+            var result = new List<EventInformation>();
+            foreach (var commandId in identifiers) {
+                var eventRow = await Retrieve<EventRow>(commandId.ToString());
+                result.Add(await From(eventRow));
+            }
+            return result;
+        }
+
+        private async Task<Job> From(JobRow jobRow) {
+            var job = new Job {
+                Id = Guid.Parse(jobRow.RowKey),
+                IsDone = jobRow.IsDone
+            };
+            if (string.IsNullOrEmpty(jobRow.CommandIdentifiers)) {
+                return job;
+            }
+            var commandIds = jobRow.GetCommandIdentifiers(_jsonConverter);
+            if (commandIds.Any()) {
+                job.CommandInformations = (await GetCommandInformation(commandIds)).ToArray();
+            }
+            return job;
+        }
+
+        private async Task<CommandInformation> From(CommandRow commandRow) {
+            var commandInformation = new CommandInformation {
+                Id = Guid.Parse(commandRow.RowKey),
+                IsStarted = commandRow.IsStarted,
+                IsDone = commandRow.IsDone,
+                IsSuccessful = commandRow.IsSuccessful,
+                ExecutionDate = commandRow.ExecutionDate
+            };
+            if (string.IsNullOrEmpty(commandRow.Events)) {
+                return commandInformation;
+            }
+            var eventIdentifiers = commandRow.GetEventIdentifiers(_jsonConverter);
+            if (eventIdentifiers.Any()) {
+                commandInformation.EventInformations = (await GetEventInformation(eventIdentifiers)).ToArray();
+            }
+            return commandInformation;
+        }
+
+        private async Task<EventInformation> From(EventRow eventRow) {
+            var eventInformation = new EventInformation {
+                Id = Guid.Parse(eventRow.RowKey),
+                IsStarted = eventRow.IsStarted,
+                IsDone = eventRow.IsDone,
+                IsSuccessful = eventRow.IsSuccessful,
+                ExecutionDate = eventRow.ExecutionDate
+            };
+            if (string.IsNullOrEmpty(eventRow.Actions)) {
+                return eventInformation;
+            }
+            var actionIdentifiers = eventRow.GetActionIdentifiers(_jsonConverter);
+            if (actionIdentifiers.Any()) {
+                eventInformation.CommandInformations = (await GetCommandInformation(actionIdentifiers)).ToArray();
+            }
+            return eventInformation;
+        }
+
+        protected async Task<TRow> Retrieve<TRow>(string id) where TRow : class, ITableEntity {
+            var rowType = typeof(TRow);
+            var retrieveOperation =
+                TableOperation.Retrieve<TRow>(rowType.Name.Substring(0, rowType.Name.Length - 3), id);
+            TableResult tableResult;
+            switch (rowType.Name) {
+                case "CommandRow":
+                    tableResult = await _commandTable.ExecuteAsync(retrieveOperation);
+                    break;
+                case "EventRow":
+                    tableResult = await _eventTable.ExecuteAsync(retrieveOperation);
+                    break;
+                case "JobRow":
+                    tableResult = await _jobTable.ExecuteAsync(retrieveOperation);
+                    break;
+                default:
+                    throw new ArgumentException(nameof(TRow));
+            }
+            var row = tableResult.Result as TRow;
+            if (row == null) {
+                throw new Exception();
+            }
+            return row;
         }
 
         #region Private classes
@@ -119,7 +306,11 @@ namespace EventSourcing.Poc.Processing.Jobs {
         private class JobRow : TableEntity {
             public bool IsStarted { get; set; }
             public bool IsDone { get; set; }
-            public string Commands { get; set; }
+            public string CommandIdentifiers { get; set; }
+
+            public IReadOnlyCollection<Guid> GetCommandIdentifiers(IJsonConverter jsonConverter) {
+                return jsonConverter.Deserialize<List<Guid>>(CommandIdentifiers);
+            }
         }
 
         private class CommandRow : TableEntity {
@@ -128,6 +319,11 @@ namespace EventSourcing.Poc.Processing.Jobs {
             public DateTimeOffset? ExecutionDate { get; set; }
             public bool IsSuccessful { get; set; }
             public string Events { get; set; }
+            public Guid? ParentId { get; set; }
+
+            public IReadOnlyCollection<Guid> GetEventIdentifiers(IJsonConverter jsonConverter) {
+                return jsonConverter.Deserialize<List<Guid>>(Events);
+            }
         }
 
         private class EventRow : TableEntity {
@@ -136,6 +332,13 @@ namespace EventSourcing.Poc.Processing.Jobs {
             public DateTimeOffset? ExecutionDate { get; set; }
             public bool IsSuccessful { get; set; }
             public Guid? ParentId { get; set; }
+            public string Actions { get; set; }
+
+            public IReadOnlyCollection<Guid> GetActionIdentifiers(IJsonConverter jsonConverter)
+            {
+                return jsonConverter.Deserialize<List<Guid>>(Actions);
+            }
+
         }
 
         private class ActionRow : TableEntity {

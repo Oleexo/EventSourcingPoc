@@ -26,7 +26,7 @@ namespace EventSourcing.Poc.Processing {
         public static void AddEventHandler(Assembly assembly)
         {
             var newMapping =
-                HandlerFactoryHelper.CreateHandler<EventHandlerAttribute>(assembly, typeof(ICommandHandler<>));
+                HandlerFactoryHelper.CreateHandler<EventHandlerAttribute>(assembly, typeof(IEventHandler<>));
             _eventToEventHandlers = _eventToEventHandlers.Concat(newMapping)
                 .ToDictionary(x => x.Key, x => x.Value);
         }

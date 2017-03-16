@@ -9,6 +9,9 @@ namespace EventSourcing.Poc.EventSourcing.Wrapper {
             ParentId = parent.Id;
         }
 
+        public EventWrapper() {
+        }
+
         public Guid Id { get; set; }
         public bool IsLinkToJob => JobId.HasValue;
         public TEvent Event { get; set; }

@@ -16,13 +16,16 @@ namespace EventSourcing.Poc.Processing
         private readonly ICommandQueue _commandQueue;
         private readonly IJobFactory _jobFactory;
 
-        public CommandDispatcher(ICommandStore commandStore, ICommandQueue commandQueue, IJobFactory jobFactory) {
+
+        public CommandDispatcher(ICommandStore commandStore, 
+            ICommandQueue commandQueue, 
+            IJobFactory jobFactory) {
             _commandStore = commandStore;
             _commandQueue = commandQueue;
             _jobFactory = jobFactory;
         }
 
-        public async Task<IJob> Send<TCommand>(TCommand command, TimeSpan? timeout = null) where TCommand : ICommand {
+        public async Task<IJob> Send(ICommand command, TimeSpan? timeout = null) {
             var wrappedCommand = command.Wrap();
             var job = await _jobFactory.Create(wrappedCommand);
             await _commandStore.Save(wrappedCommand);
@@ -30,7 +33,7 @@ namespace EventSourcing.Poc.Processing
             return job;
         }
 
-        public async Task<IJob> Send<TCommand>(IReadOnlyCollection<TCommand> commands, TimeSpan? timeout = null) where TCommand : ICommand {
+        public async Task<IJob> Send(IReadOnlyCollection<ICommand> commands, TimeSpan? timeout = null) {
             var wrappedCommands = commands.Select(c => c.Wrap()).ToArray();
             var job = await _jobFactory.Create(wrappedCommands);
             await _commandStore.Save(wrappedCommands);
@@ -43,5 +46,6 @@ namespace EventSourcing.Poc.Processing
         private async Task SendToQueue(ICommandWrapper commandWrapper) {
             await _commandQueue.Send(commandWrapper);
         }
+
     }
 }

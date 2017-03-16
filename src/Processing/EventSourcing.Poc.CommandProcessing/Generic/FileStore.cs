@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
+using System.Text;
 using System.Threading.Tasks;
 using EventSourcing.Poc.EventSourcing.Utils;
 using Microsoft.WindowsAzure.Storage;
@@ -19,21 +21,47 @@ namespace EventSourcing.Poc.Processing.Generic {
             _fileShare.CreateIfNotExistsAsync();
         }
 
-        protected async Task SaveAsync(TObject objectToStore) {
-            await Upload(objectToStore);
+        protected async Task<string> SaveAsync(TObject objectToStore) {
+            var destinationFolder = await GetDestinationFolder(_fileShare);
+            
+            await Upload(destinationFolder, objectToStore);
+            return UriToString(destinationFolder.Uri);
         }
 
-        protected async Task SaveAsync(IReadOnlyCollection<TObject> objectToStores) {
+        private string UriToString(Uri uri) {
+            var segments = uri.Segments.Skip(2);
+            var sb = new StringBuilder();
+            foreach (var segment in segments) {
+                sb.Append(segment);
+            }
+            return sb.ToString();
+        }
+
+        protected async Task<string> SaveAsync(IReadOnlyCollection<TObject> objectToStores) {
             var destinationFolder = await GetDestinationFolder(_fileShare);
             foreach (var objectToStore in objectToStores) {
                 await Upload(destinationFolder, objectToStore);
             }
+            return UriToString(destinationFolder.Uri);
+        }
+
+        protected async Task<TObject> RetrieveAsync(string filename, string path, bool deleteAfterRead = false) {
+            var folders = path.Split('/');
+            var currentFolder = _fileShare.GetRootDirectoryReference();
+            foreach (var folderName in folders) {
+                currentFolder = currentFolder.GetDirectoryReference(folderName);
+            }
+            return await RetrieveAsync(filename, currentFolder, deleteAfterRead);
         }
 
         protected async Task<TObject> RetrieveAsync(string filename, bool deleteAfterRead = false)
         {
             var folder = await GetDestinationFolder(_fileShare);
-            var file = folder.GetFileReference(filename);
+            return await RetrieveAsync(filename, folder, deleteAfterRead);
+        }
+
+        private async Task<TObject> RetrieveAsync(string filename, CloudFileDirectory directory, bool deleteAfterRead) {
+            var file = directory.GetFileReference(filename);
             var content = await file.DownloadTextAsync();
             var fileContent = _jsonConverter.Deserialize<FileContent>(content);
             var outputType = Type.GetType(fileContent.Type);
