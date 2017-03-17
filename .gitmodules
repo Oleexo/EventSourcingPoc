@@ -1,0 +1,3 @@
+[submodule "lib/azure-service-bus-dotnet"]
+	path = lib/azure-service-bus-dotnet
+	url = https://github.com/Azure/azure-service-bus-dotnet.git
