@@ -10,6 +10,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\lib\azure-service-bus-dotnet\src\Microsoft.Azure.ServiceBus\Microsoft.Azure.ServiceBus.csproj" />
     <ProjectReference Include="..\EventSourcing.Poc.Messages\EventSourcing.Poc.Messages.csproj" />
   </ItemGroup>
 

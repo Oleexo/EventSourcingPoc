@@ -27,13 +27,20 @@ namespace EventSourcing.Poc.Processing.Generic {
             await _queueClient.SendAsync(new Message(_jsonConverter.Serialize(message)));
         }
 
+        public virtual void RegisterMessageHandler(Func<TWrapper, CancellationToken, Task> handler,
+            RegisterHandlerOptions handlerOptions) {
+            _queueClient.RegisterMessageHandler((message, token) => Handler(message, token, handler), handlerOptions);
+        }
+
+        private async Task Handler(Message message, CancellationToken token, Func<TWrapper, CancellationToken, Task> handler) {
+            var body = message.GetBody<string>();
+            var queueMessage = _jsonConverter.Deserialize<QueueMessage>(body);
+            var wrapper = await RetrieveAsync($"{queueMessage.Id}.json", true);
+            await handler.Invoke(wrapper, token);
+        }
+
         public virtual void RegisterMessageHandler(Func<TWrapper, CancellationToken, Task> handler) {
-            _queueClient.RegisterMessageHandler(async (message, token) => {
-                var body = message.GetBody<string>();
-                var queueMessage = _jsonConverter.Deserialize<QueueMessage>(body);
-                var wrapper = await RetrieveAsync($"{queueMessage.Id}.json", true);
-                await handler.Invoke(wrapper, token);
-            });
+            _queueClient.RegisterMessageHandler((message, token) => Handler(message, token, handler));
         }
 
         protected override string CreateFileName(TWrapper @object) {
