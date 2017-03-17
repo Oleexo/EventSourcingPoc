@@ -42,12 +42,13 @@ namespace EventSourcing.Poc.Api
             services.Configure<CommandQueueOptions>(Configuration.GetSection("CommandQueue"));
             services.Configure<JobHandlerOptions>(Configuration.GetSection("JobHandler"));
 
-            services.AddTransient<IJobHandler, JobHandler>();
-            services.AddTransient<ICommandDispatcher, CommandDispatcher>();
-            services.AddTransient<ICommandQueue, CommandQueue>();
-            services.AddTransient<ICommandStore, CommandStore>();
-            services.AddTransient<IJobFactory, JobFactory>();
-            services.AddTransient<IJsonConverter, NewtonsoftJsonConverter>();
+            services.AddScoped<IJobHandler, JobHandler>();
+            services.AddScoped<ICommandDispatcher, CommandDispatcher>();
+            services.AddScoped<ICommandQueue, CommandQueue>();
+            services.AddScoped<ICommandStore, CommandStore>();
+            services.AddScoped<IJobFactory, JobFactory>();
+            services.AddScoped<IJobFollower, JobHandler>();
+            services.AddScoped<IJsonConverter, NewtonsoftJsonConverter>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

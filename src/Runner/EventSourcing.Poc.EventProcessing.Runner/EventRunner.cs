@@ -58,25 +58,29 @@ namespace EventSourcing.Poc.EventProcessing.Runner {
                 options.QueueConnectionString = _configurationRoot.GetSection("CommandQueue")["QueueConnectionString"];
                 options.QueueName = _configurationRoot.GetSection("CommandQueue")["QueueName"];
             });
-            serviceCollection.AddTransient<ICommandQueue, CommandQueue>();
-            serviceCollection.AddTransient<IEntityMutexFactory, EntityMutexFactory>();
-            serviceCollection.AddTransient<IJsonConverter, NewtonsoftJsonConverter>();
-            serviceCollection.AddTransient<IJobHandler, JobHandler>();
-            serviceCollection.AddTransient<PostHandler>();
-            serviceCollection.AddTransient<ICommandStore, CommandStore>();
-            serviceCollection.AddTransient<IActionDispatcher, ActionDispatcher>();
-            serviceCollection.AddTransient<IEventQueue, EventQueue>();
+            serviceCollection.AddScoped<ICommandQueue, CommandQueue>();
+            serviceCollection.AddScoped<IEntityMutexFactory, EntityMutexFactory>();
+            serviceCollection.AddScoped<IMutexGarbageCollector, MutexGarbageCollector>();
+            serviceCollection.AddScoped<IJsonConverter, NewtonsoftJsonConverter>();
+            serviceCollection.AddScoped<IJobHandler, JobHandler>();
+            serviceCollection.AddScoped<PostHandler>();
+            serviceCollection.AddScoped<ICommandStore, CommandStore>();
+            serviceCollection.AddScoped<IActionDispatcher, ActionDispatcher>();
+            serviceCollection.AddScoped<EventProcessor>();
+            serviceCollection.AddScoped<EventHandlerFactory>();
+            serviceCollection.AddScoped<IEventQueue, EventQueue>();
             var serviceProvider = serviceCollection.BuildServiceProvider();
-            var eventHandlerFactory = new EventHandlerFactory(serviceProvider);
-            var eventProcessor = new EventProcessor(eventHandlerFactory, serviceProvider.GetService<IJobHandler>(), serviceProvider.GetService<IActionDispatcher>());
-            var commandProcessorType = eventProcessor.GetType().GetTypeInfo();
             var eventQueue = serviceProvider.GetService<IEventQueue>();
             Console.WriteLine("Start listening...");
             eventQueue.RegisterMessageHandler(async (wrapper, token) => {
-                var eventType = wrapper.GetType().GetTypeInfo().GetGenericArguments()[0];
-                await (Task)commandProcessorType.GetMethod("Process")
-                    .MakeGenericMethod(eventType)
-                    .Invoke(eventProcessor, new object[] { wrapper });
+                using (var scopedServiceProvider = serviceProvider.CreateScope()) {
+                    var eventProcessor = scopedServiceProvider.ServiceProvider.GetService<EventProcessor>();
+                    var eventType = wrapper.GetType().GetTypeInfo().GetGenericArguments()[0];
+                    await (Task)eventProcessor.GetType().GetMethod("Process")
+                        .MakeGenericMethod(eventType)
+                        .Invoke(eventProcessor, new object[] {wrapper});
+                    scopedServiceProvider.ServiceProvider.GetService<IMutexGarbageCollector>().Collect();
+                }
             });
         }
     }

@@ -34,10 +34,10 @@ namespace EventSourcing.Poc.Api.Controllers
 
         // POST api/values
         [HttpPost]
-        public async Task<IJob> Post([FromBody]PostPostModel value)
+        public async Task<IJob> Post([FromBody]PostPostModel value, [FromQuery]int timeout = 60)
         {
             var command = new CreatePost(value.Title, value.Content);
-            return await _commandDispatcher.Send(command);
+            return await _commandDispatcher.Send(command, TimeSpan.FromSeconds(timeout));
         }
 
         // PUT api/values/5

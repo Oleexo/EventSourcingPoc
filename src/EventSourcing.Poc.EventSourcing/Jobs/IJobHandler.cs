@@ -13,6 +13,9 @@ namespace EventSourcing.Poc.EventSourcing.Jobs {
         Task Associate(IEventWrapper eventParent, IReadOnlyCollection<IActionWrapper> wrappedActions);
         Task Done(ICommandWrapper commandWrapper);
         Task Done(IEventWrapper eventWrapper);
+    }
+
+    public interface IJobFollower {
         Task<IJob> GetInformation(string jobId);
     }
 }

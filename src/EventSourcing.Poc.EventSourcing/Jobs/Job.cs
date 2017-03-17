@@ -37,6 +37,7 @@ namespace EventSourcing.Poc.EventSourcing.Jobs {
         public bool IsSuccessful { get; set; }
         public ICollection<EventInformation> EventInformations { get; set; }
         public DateTimeOffset? ExecutionDate { get; set; }
+        public string Type { get; set; }
 
         public bool CheckAllDependenciesDone() {
             if (EventInformations == null || !EventInformations.Any()) {
@@ -47,13 +48,6 @@ namespace EventSourcing.Poc.EventSourcing.Jobs {
         }
     }
 
-    public class ActionInformation {
-        public Guid Id { get; set; }
-        public bool IsStarted { get; set; }
-        public bool IsDone { get; set; }
-        public bool IsSuccessful { get; set; }
-    }
-
     public class EventInformation {
         public Guid Id { get; set; }
         public bool IsStarted { get; set; }
@@ -61,6 +55,7 @@ namespace EventSourcing.Poc.EventSourcing.Jobs {
         public bool IsSuccessful { get; set; }
         public DateTimeOffset? ExecutionDate { get; set; }
         public IReadOnlyCollection<CommandInformation> CommandInformations { get; set; }
+        public string Type { get; set; }
 
         public bool CheckAllDependenciesDone() {
             if (CommandInformations == null || !CommandInformations.Any()) {

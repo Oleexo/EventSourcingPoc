@@ -17,5 +17,6 @@ namespace EventSourcing.Poc.EventSourcing.Wrapper {
         public TEvent Event { get; set; }
         public Guid? ParentId { get; set; }
         public Guid? JobId { get; set; }
+        IEvent IEventWrapper.Event => Event;
     }
 }
