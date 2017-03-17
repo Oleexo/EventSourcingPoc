@@ -1,5 +1,5 @@
 # EventSourcingPoc
-Base for implement Event Sourcing Pattern (https://martinfowler.com/eaaDev/EventSourcing.html)
+Base for implement Event Sourcing Pattern (https://martinfowler.com/eaaDev/EventSourcing.html) with azure component for running command and event async in .net core.
 
 ### dependencies:
 *(Put in lib folder)*
