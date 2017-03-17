@@ -36,7 +36,6 @@ namespace EventSourcing.Poc.CommandProcessing.Runner {
                 options.JobTableName = _configurationRoot.GetSection("JobHandler")["JobTableName"];
                 options.CommandTableName = _configurationRoot.GetSection("JobHandler")["CommandTableName"];
                 options.EventTableName = _configurationRoot.GetSection("JobHandler")["EventTableName"];
-                options.ActionTableName = _configurationRoot.GetSection("JobHandler")["ActionTableName"];
                 options.ArchiveStorageName = _configurationRoot.GetSection("JobHandler")["ArchiveStorageName"];
                 options.ArchiveTableName = _configurationRoot.GetSection("JobHandler")["ArchiveTableName"];
             });

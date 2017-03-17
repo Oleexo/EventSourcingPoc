@@ -12,7 +12,6 @@ using Microsoft.WindowsAzure.Storage.Table;
 
 namespace EventSourcing.Poc.Processing.Jobs {
     public class JobHandler : IJobHandler, IJobFollower {
-        private readonly CloudTable _actionTable;
         private readonly CloudTable _commandTable;
         private readonly CloudTable _eventTable;
         private readonly JobArchive _jobArchive;
@@ -26,11 +25,9 @@ namespace EventSourcing.Poc.Processing.Jobs {
             _jobTable = cloudTableClient.GetTableReference(options.Value.JobTableName);
             _commandTable = cloudTableClient.GetTableReference(options.Value.CommandTableName);
             _eventTable = cloudTableClient.GetTableReference(options.Value.EventTableName);
-            _actionTable = cloudTableClient.GetTableReference(options.Value.ActionTableName);
             _jobTable.CreateIfNotExistsAsync().Wait();
             _commandTable.CreateIfNotExistsAsync().Wait();
             _eventTable.CreateIfNotExistsAsync().Wait();
-            _actionTable.CreateIfNotExistsAsync().Wait();
             _jobArchive = new JobArchive(options.Value.ConnectionString, options.Value.ArchiveStorageName,
                 options.Value.ArchiveTableName, jsonConverter);
         }
