@@ -75,7 +75,8 @@ namespace EventSourcing.Poc.EventProcessing.Runner {
                 using (var scopedServiceProvider = serviceProvider.CreateScope()) {
                     var eventProcessor = scopedServiceProvider.ServiceProvider.GetService<EventProcessor>();
                     var eventType = wrapper.GetType().GetTypeInfo().GetGenericArguments()[0];
-                    await (Task)eventProcessor.GetType().GetMethod("Process")
+                    await (Task) eventProcessor.GetType()
+                        .GetMethod("Process")
                         .MakeGenericMethod(eventType)
                         .Invoke(eventProcessor, new object[] {wrapper});
                     scopedServiceProvider.ServiceProvider.GetService<IMutexGarbageCollector>().Collect();
