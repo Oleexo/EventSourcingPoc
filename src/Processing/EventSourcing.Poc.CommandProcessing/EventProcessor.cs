@@ -6,15 +6,15 @@ using EventSourcing.Poc.EventSourcing.Command;
 using EventSourcing.Poc.EventSourcing.Jobs;
 using EventSourcing.Poc.EventSourcing.Wrapper;
 using EventSourcing.Poc.Messages;
-using Microsoft.Azure.Amqp;
 
 namespace EventSourcing.Poc.Processing {
     public class EventProcessor {
+        private readonly IActionDispatcher _actionDispatcher;
         private readonly EventHandlerFactory _eventHandlerFactory;
         private readonly IJobHandler _jobHandler;
-        private readonly IActionDispatcher _actionDispatcher;
 
-        public EventProcessor(EventHandlerFactory eventHandlerFactory, IJobHandler jobHandler, IActionDispatcher actionDispatcher) {
+        public EventProcessor(EventHandlerFactory eventHandlerFactory, IJobHandler jobHandler,
+            IActionDispatcher actionDispatcher) {
             _eventHandlerFactory = eventHandlerFactory;
             _jobHandler = jobHandler;
             _actionDispatcher = actionDispatcher;

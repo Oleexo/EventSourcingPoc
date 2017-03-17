@@ -10,8 +10,8 @@ using Microsoft.WindowsAzure.Storage.File;
 
 namespace EventSourcing.Poc.Processing.Generic {
     public abstract class FileStore<TObject> where TObject : class {
-        private readonly IJsonConverter _jsonConverter;
         private readonly CloudFileShare _fileShare;
+        private readonly IJsonConverter _jsonConverter;
 
         protected FileStore(string storageConnectionString, string storageName, IJsonConverter jsonConverter) {
             _jsonConverter = jsonConverter;
@@ -23,7 +23,7 @@ namespace EventSourcing.Poc.Processing.Generic {
 
         protected async Task<string> SaveAsync(TObject objectToStore) {
             var destinationFolder = await GetDestinationFolder(_fileShare);
-            
+
             await Upload(destinationFolder, objectToStore);
             return UriToString(destinationFolder.Uri);
         }
@@ -54,8 +54,7 @@ namespace EventSourcing.Poc.Processing.Generic {
             return await RetrieveAsync(filename, currentFolder, deleteAfterRead);
         }
 
-        protected async Task<TObject> RetrieveAsync(string filename, bool deleteAfterRead = false)
-        {
+        protected async Task<TObject> RetrieveAsync(string filename, bool deleteAfterRead = false) {
             var folder = await GetDestinationFolder(_fileShare);
             return await RetrieveAsync(filename, folder, deleteAfterRead);
         }
@@ -66,15 +65,13 @@ namespace EventSourcing.Poc.Processing.Generic {
             var fileContent = _jsonConverter.Deserialize<FileContent>(content);
             var outputType = Type.GetType(fileContent.Type);
             var @object = ConvertToObject(fileContent.Content.FromBase64(), outputType);
-            if (deleteAfterRead)
-            {
+            if (deleteAfterRead) {
                 await file.DeleteAsync();
             }
             return @object;
         }
 
-        private async Task Upload(TObject objectToStore)
-        {
+        private async Task Upload(TObject objectToStore) {
             var folder = await GetDestinationFolder(_fileShare);
             await Upload(folder, objectToStore);
         }
@@ -109,7 +106,6 @@ namespace EventSourcing.Poc.Processing.Generic {
                     Content = jsonContent.ToBase64()
                 };
             }
-
         }
     }
 }

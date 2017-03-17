@@ -7,6 +7,4 @@ namespace EventSourcing.Poc.EventSourcing.Jobs {
         Task<IJob> Create(ICommandWrapper wrappedCommand);
         Task<IJob> Create(IReadOnlyCollection<ICommandWrapper> wrappedCommands);
     }
-
-
 }

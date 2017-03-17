@@ -8,8 +8,8 @@ using Microsoft.Extensions.Options;
 
 namespace EventSourcing.Poc.Processing.Mutex {
     public class EntityMutexFactory : IEntityMutexFactory {
-        private readonly IMutexGarbageCollector _mutexGc;
         private readonly TableClient _entityTable;
+        private readonly IMutexGarbageCollector _mutexGc;
 
         public EntityMutexFactory(IOptions<EntityMutexFactoryOptions> options, IMutexGarbageCollector mutexGc) {
             _mutexGc = mutexGc;
@@ -42,8 +42,7 @@ namespace EventSourcing.Poc.Processing.Mutex {
             _mutexes.Add(mutex);
         }
 
-        public void Register(IMutexAsync mutex)
-        {
+        public void Register(IMutexAsync mutex) {
             _mutexes.Add(mutex);
         }
 

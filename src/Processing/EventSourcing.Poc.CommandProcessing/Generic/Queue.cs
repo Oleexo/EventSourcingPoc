@@ -11,7 +11,7 @@ namespace EventSourcing.Poc.Processing.Generic {
         private readonly IJsonConverter _jsonConverter;
         private readonly QueueClient _queueClient;
 
-        public Queue(string queueConnectionString, string queueName, 
+        public Queue(string queueConnectionString, string queueName,
             string storageConnectionString, string storageName,
             IJsonConverter jsonConverter)
             : base(storageConnectionString, storageName, jsonConverter) {

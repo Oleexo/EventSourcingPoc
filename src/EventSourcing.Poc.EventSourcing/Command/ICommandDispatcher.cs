@@ -15,7 +15,7 @@ namespace EventSourcing.Poc.EventSourcing.Command {
     }
 
     public interface IActionDispatcher {
-        Task Send([NotNull]IEventWrapper eventParent, [NotNull] IAction action);
-        Task Send([NotNull]IEventWrapper eventParent, [NotNull] IReadOnlyCollection<IAction> actions);
+        Task Send([NotNull] IEventWrapper eventParent, [NotNull] IAction action);
+        Task Send([NotNull] IEventWrapper eventParent, [NotNull] IReadOnlyCollection<IAction> actions);
     }
 }

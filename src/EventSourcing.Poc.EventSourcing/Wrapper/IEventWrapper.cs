@@ -6,7 +6,8 @@ namespace EventSourcing.Poc.EventSourcing.Wrapper {
         Guid? ParentId { get; set; }
         Guid? JobId { get; set; }
         IEvent Event { get; }
-}
+    }
+
     public interface IEventWrapper<TEvent> : IEventWrapper where TEvent : IEvent {
         new TEvent Event { get; set; }
     }

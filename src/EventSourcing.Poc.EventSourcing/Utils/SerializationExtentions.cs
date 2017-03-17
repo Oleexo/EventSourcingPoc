@@ -10,9 +10,9 @@ namespace EventSourcing.Poc.EventSourcing.Utils {
         public static string FromBase64(this string encodedString) {
             return Encoding.UTF8.GetString(Convert.FromBase64String(encodedString));
         }
+        //{
 
         //public static string ToJsonBase64(this object @object)
-        //{
         //    return Convert.ToBase64String(Encoding.UTF8.GetBytes(@object.ToJson()));
         //}
 

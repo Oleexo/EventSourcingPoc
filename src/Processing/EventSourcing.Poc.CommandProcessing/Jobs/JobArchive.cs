@@ -9,9 +9,10 @@ using Microsoft.WindowsAzure.Storage.Table;
 
 namespace EventSourcing.Poc.Processing.Jobs {
     internal class JobArchive : FileStore<Job> {
-        private CloudTable _archiveTable;
+        private readonly CloudTable _archiveTable;
 
-        public JobArchive(string storageConnectionString, string storageName, string archiveTableName, IJsonConverter jsonConverter)
+        public JobArchive(string storageConnectionString, string storageName, string archiveTableName,
+            IJsonConverter jsonConverter)
             : base(storageConnectionString, storageName, jsonConverter) {
             _archiveTable = CloudStorageAccount.Parse(storageConnectionString)
                 .CreateCloudTableClient()
@@ -39,7 +40,7 @@ namespace EventSourcing.Poc.Processing.Jobs {
             var archiveRow = new ArchiveRow {
                 PartitionKey = "Archive",
                 RowKey = job.Id.ToString(),
-                Timestamp = DateTimeOffset.UtcNow,                
+                Timestamp = DateTimeOffset.UtcNow
             };
             var path = await SaveAsync(job);
             archiveRow.Path = path;

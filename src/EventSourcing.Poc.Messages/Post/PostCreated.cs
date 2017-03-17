@@ -2,8 +2,7 @@
 
 namespace EventSourcing.Poc.Messages.Post {
     public class PostCreated : IEvent {
-        public PostCreated(Guid id, string title, string content)
-        {
+        public PostCreated(Guid id, string title, string content) {
             Id = id;
             Title = title;
             Content = content;

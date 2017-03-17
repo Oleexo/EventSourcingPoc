@@ -1,5 +1,4 @@
 ﻿using System;
-using EventSourcing.Poc.EventSourcing.Utils;
 
 namespace EventSourcing.Poc.EventSourcing.Exceptions {
     public class ExceptionDetail {
@@ -12,7 +11,7 @@ namespace EventSourcing.Poc.EventSourcing.Exceptions {
             }
             return new ExceptionDetail {
                 ExceptionType = exception.GetType().FullName,
-                ExceptionSerialized = string.Empty//exception.ToJson()
+                ExceptionSerialized = string.Empty //exception.ToJson()
             };
         }
     }

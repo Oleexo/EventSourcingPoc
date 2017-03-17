@@ -1,5 +1,4 @@
 ﻿using System;
-using EventSourcing.Poc.EventSourcing.Wrapper;
 
 namespace EventSourcing.Poc.EventSourcing.Utils {
     public interface IJsonConverter {

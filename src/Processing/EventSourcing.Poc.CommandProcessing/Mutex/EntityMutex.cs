@@ -5,15 +5,10 @@ using System.Threading.Tasks;
 using EventSourcing.Poc.EventSourcing;
 using EventSourcing.Poc.EventSourcing.Mutex;
 using Microsoft.Azure.StorageAccount;
-using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
 
 namespace EventSourcing.Poc.Processing.Mutex {
     public class EntityMutex<TKey> : IMutexAsync {
-        private enum StatusType {
-            Lock = 1,
-            UnLock = 0
-        }
         private readonly TableClient _entityTable;
         private readonly string _identifier;
         private readonly string _mutexId;
@@ -28,11 +23,14 @@ namespace EventSourcing.Poc.Processing.Mutex {
             Status = StatusType.UnLock;
         }
 
+        private string PartitionKey => $"{_type}:{_identifier}";
+
         public void Dispose() {
             ReleaseAsync().Wait();
         }
 
         public async Task LockAsync() {
+            // ReSharper disable once SuggestVarOrType_Elsewhere
             (string partitionKey, DateTimeOffset timestamp, int magicNumber) lockData = await InitLock();
 
             EntityLockRow currentLocker = null;
@@ -57,9 +55,11 @@ namespace EventSourcing.Poc.Processing.Mutex {
             }
         }
 
-        private async Task<EntityLockRow> GetCurrentLock((string partitionKey, DateTimeOffset timestamp, int magicKey) lockData) {
+        private async Task<EntityLockRow> GetCurrentLock(
+            (string partitionKey, DateTimeOffset timestamp, int magicNumber) lockData) {
             var query = new TableQuery<EntityLockRow>()
-                .Where(TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, lockData.partitionKey));
+                .Where(
+                    TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, lockData.partitionKey));
             TableContinuationToken tableContinuationToken = null;
             var result = new List<EntityLockRow>();
             do {
@@ -67,7 +67,7 @@ namespace EventSourcing.Poc.Processing.Mutex {
                 tableContinuationToken = queryResponse.ContinuationToken;
                 result.AddRange(queryResponse.Results);
             } while (tableContinuationToken != null);
-            var filtered = result.Where(e => e.Timestamp <= lockData.timestamp).OrderBy(e => e.Timestamp).Take(1);
+            var filtered = result.Where(e => e.Timestamp <= lockData.timestamp).OrderBy(e => e.Timestamp).ThenBy(e => e.MagicNumber).Take(1);
             return filtered.FirstOrDefault();
         }
 
@@ -97,7 +97,10 @@ namespace EventSourcing.Poc.Processing.Mutex {
             return (partitionKey, entityLockRow.Timestamp, entityLockRow.MagicNumber);
         }
 
-        private string PartitionKey => $"{_type}:{_identifier}";
+        private enum StatusType {
+            Lock = 1,
+            UnLock = 0
+        }
 
         private class EntityLockRow : TableEntity {
             public int MagicNumber { get; set; }

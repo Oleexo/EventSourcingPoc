@@ -46,7 +46,7 @@ namespace EventSourcing.Poc.Processing {
 
         private IJob TryWait(IJob job, TimeSpan timeout) {
             var duration = (long) timeout.TotalMilliseconds;
-            var waitTime = (int)(duration / 10);
+            var waitTime = (int) (duration / 10);
             if (waitTime < 1000) {
                 waitTime = 1000;
             }
