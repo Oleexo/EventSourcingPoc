@@ -9,6 +9,7 @@ using EventSourcing.Poc.EventSourcing.Jobs;
 using EventSourcing.Poc.EventSourcing.Mutex;
 using EventSourcing.Poc.EventSourcing.Utils;
 using EventSourcing.Poc.Processing;
+using EventSourcing.Poc.Processing.Commons.Security;
 using EventSourcing.Poc.Processing.Jobs;
 using EventSourcing.Poc.Processing.Mutex;
 using EventSourcing.Poc.Processing.Options;
@@ -57,6 +58,10 @@ namespace EventSourcing.Poc.EventProcessing.Runner {
                 options.QueueConnectionString = _configurationRoot.GetSection("CommandQueue")["QueueConnectionString"];
                 options.QueueName = _configurationRoot.GetSection("CommandQueue")["QueueName"];
             });
+            serviceCollection.Configure<SecurityServiceOptions>(options => {
+                options.Encryption = bool.Parse(_configurationRoot.GetSection("Security")["Encryption"]);
+                options.Key = _configurationRoot.GetSection("Security")["Key"];
+            });
             serviceCollection.AddScoped<ICommandQueue, CommandQueue>();
             serviceCollection.AddScoped<IEntityMutexFactory, EntityMutexFactory>();
             serviceCollection.AddScoped<IMutexGarbageCollector, MutexGarbageCollector>();
@@ -68,6 +73,8 @@ namespace EventSourcing.Poc.EventProcessing.Runner {
             serviceCollection.AddScoped<EventProcessor>();
             serviceCollection.AddScoped<EventHandlerFactory>();
             serviceCollection.AddScoped<IEventQueue, EventQueue>();
+            serviceCollection.AddScoped<ISecurityService, SecurityService>();
+
             var serviceProvider = serviceCollection.BuildServiceProvider();
             var eventQueue = serviceProvider.GetService<IEventQueue>();
             Console.WriteLine("Start listening...");

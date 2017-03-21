@@ -3,6 +3,7 @@ using EventSourcing.Poc.EventSourcing.Command;
 using EventSourcing.Poc.EventSourcing.Jobs;
 using EventSourcing.Poc.EventSourcing.Utils;
 using EventSourcing.Poc.Processing;
+using EventSourcing.Poc.Processing.Commons.Security;
 using EventSourcing.Poc.Processing.Jobs;
 using EventSourcing.Poc.Processing.Options;
 using Microsoft.AspNetCore.Builder;
@@ -33,6 +34,7 @@ namespace EventSourcing.Poc.Api {
             services.Configure<CommandStoreOptions>(Configuration.GetSection("CommandStore"));
             services.Configure<CommandQueueOptions>(Configuration.GetSection("CommandQueue"));
             services.Configure<JobHandlerOptions>(Configuration.GetSection("JobHandler"));
+            services.Configure<SecurityServiceOptions>(Configuration.GetSection("Security"));
 
             services.AddScoped<IJobHandler, JobHandler>();
             services.AddScoped<ICommandDispatcher, CommandDispatcher>();
@@ -41,6 +43,7 @@ namespace EventSourcing.Poc.Api {
             services.AddScoped<IJobFactory, JobFactory>();
             services.AddScoped<IJobFollower, JobHandler>();
             services.AddScoped<IJsonConverter, NewtonsoftJsonConverter>();
+            services.AddScoped<ISecurityService, SecurityService>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

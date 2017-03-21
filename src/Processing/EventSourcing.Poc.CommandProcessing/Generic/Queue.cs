@@ -3,6 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using EventSourcing.Poc.EventSourcing.Utils;
 using EventSourcing.Poc.EventSourcing.Wrapper;
+using EventSourcing.Poc.Processing.Commons.Security;
 using Microsoft.Azure.ServiceBus;
 using Microsoft.WindowsAzure.Storage.File;
 
@@ -13,8 +14,9 @@ namespace EventSourcing.Poc.Processing.Generic {
 
         public Queue(string queueConnectionString, string queueName,
             string storageConnectionString, string storageName,
-            IJsonConverter jsonConverter)
-            : base(storageConnectionString, storageName, jsonConverter) {
+            IJsonConverter jsonConverter,
+            ISecurityService securityService)
+            : base(storageConnectionString, storageName, jsonConverter, securityService) {
             _jsonConverter = jsonConverter;
             _queueClient = new QueueClient(queueConnectionString, queueName, ReceiveMode.ReceiveAndDelete);
         }
@@ -24,7 +26,9 @@ namespace EventSourcing.Poc.Processing.Generic {
             var message = new QueueMessage {
                 Id = wrapper.Id
             };
-            await _queueClient.SendAsync(new Message(_jsonConverter.Serialize(message)));
+            var serializedMessage = _jsonConverter.Serialize(message);
+            var queueMessage = new Message(serializedMessage);
+            await _queueClient.SendAsync(queueMessage);
         }
 
         public virtual void RegisterMessageHandler(Func<TWrapper, CancellationToken, Task> handler,
@@ -32,7 +36,8 @@ namespace EventSourcing.Poc.Processing.Generic {
             _queueClient.RegisterMessageHandler((message, token) => Handler(message, token, handler), handlerOptions);
         }
 
-        private async Task Handler(Message message, CancellationToken token, Func<TWrapper, CancellationToken, Task> handler) {
+        private async Task Handler(Message message, CancellationToken token,
+            Func<TWrapper, CancellationToken, Task> handler) {
             var body = message.GetBody<string>();
             var queueMessage = _jsonConverter.Deserialize<QueueMessage>(body);
             var wrapper = await RetrieveAsync($"{queueMessage.Id}.json", true);

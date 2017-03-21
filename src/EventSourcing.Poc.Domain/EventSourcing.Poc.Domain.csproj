@@ -4,6 +4,8 @@
     <TargetFramework>netstandard1.6</TargetFramework>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug Local|AnyCPU'" />
+
   <ItemGroup>
     <ProjectReference Include="..\EventSourcing.Poc.EventSourcing\EventSourcing.Poc.EventSourcing.csproj" />
   </ItemGroup>

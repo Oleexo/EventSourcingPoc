@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using EventSourcing.Poc.EventSourcing;
 using EventSourcing.Poc.EventSourcing.Utils;
 using EventSourcing.Poc.EventSourcing.Wrapper;
+using EventSourcing.Poc.Processing.Commons.Security;
 using EventSourcing.Poc.Processing.Generic;
 using Microsoft.Extensions.Options;
 using Microsoft.WindowsAzure.Storage.File;
@@ -11,8 +12,9 @@ using Microsoft.WindowsAzure.Storage.File;
 namespace EventSourcing.Poc.Processing {
     public class EventStore : FileStore<IEventWrapper>, IEventStore {
         public EventStore(IOptions<EventStoreOptions> options,
-            IJsonConverter jsonConverter)
-            : base(options.Value.ConnectionString, options.Value.Name, jsonConverter) {
+            IJsonConverter jsonConverter,
+            ISecurityService securityService)
+            : base(options.Value.ConnectionString, options.Value.Name, jsonConverter, securityService) {
         }
 
         public async Task Save(IEventWrapper wrappedEvent) {

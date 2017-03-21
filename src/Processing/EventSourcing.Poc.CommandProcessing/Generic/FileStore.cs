@@ -5,16 +5,22 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using EventSourcing.Poc.EventSourcing.Utils;
+using EventSourcing.Poc.Processing.Commons.Security;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.File;
 
 namespace EventSourcing.Poc.Processing.Generic {
     public abstract class FileStore<TObject> where TObject : class {
+        private const string EncryptedFileExtension = ".encrypted";
+        private const string IvMetadataKey = "IV";
         private readonly CloudFileShare _fileShare;
         private readonly IJsonConverter _jsonConverter;
+        private readonly ISecurityService _securityService;
 
-        protected FileStore(string storageConnectionString, string storageName, IJsonConverter jsonConverter) {
+        protected FileStore(string storageConnectionString, string storageName, IJsonConverter jsonConverter,
+            ISecurityService securityService) {
             _jsonConverter = jsonConverter;
+            _securityService = securityService;
             var storageAccount = CloudStorageAccount.Parse(storageConnectionString);
             var fileClient = storageAccount.CreateCloudFileClient();
             _fileShare = fileClient.GetShareReference(storageName);
@@ -60,8 +66,28 @@ namespace EventSourcing.Poc.Processing.Generic {
         }
 
         private async Task<TObject> RetrieveAsync(string filename, CloudFileDirectory directory, bool deleteAfterRead) {
-            var file = directory.GetFileReference(filename);
+            CloudFile file;
+            var encryptedContent = false;
+            if (_securityService.Enable) {
+                file = directory.GetFileReference(filename + EncryptedFileExtension);
+                if (!await file.ExistsAsync()) {
+                    file = directory.GetFileReference(filename);
+                }
+                else {
+                    encryptedContent = true;
+                }
+            } else { 
+                file = directory.GetFileReference(filename);
+            }
+            if (!await file.ExistsAsync()) {
+                throw new ArgumentException(nameof(filename));
+            }
             var content = await file.DownloadTextAsync();
+            if (encryptedContent) {
+                await file.FetchAttributesAsync();
+                var iv = file.Metadata[IvMetadataKey].FromBase64();
+                content = _securityService.Decrypt(content, iv);
+            }
             var fileContent = _jsonConverter.Deserialize<FileContent>(content);
             var outputType = Type.GetType(fileContent.Type);
             var @object = ConvertToObject(fileContent.Content.FromBase64(), outputType);
@@ -78,10 +104,23 @@ namespace EventSourcing.Poc.Processing.Generic {
 
         private async Task Upload(CloudFileDirectory destinationFolder, TObject objectToStore) {
             var fileName = CreateFileName(objectToStore);
+            if (_securityService.Enable) {
+                fileName += EncryptedFileExtension;
+            }
             var file = destinationFolder.GetFileReference(fileName);
             var jsonContent = ConvertToJson(objectToStore);
             var fileContent = FileContent.Create(objectToStore, jsonContent);
-            await file.UploadTextAsync(_jsonConverter.Serialize(fileContent));
+            var serializedContent = _jsonConverter.Serialize(fileContent);
+            if (_securityService.Enable) {
+                var iv = _securityService.CreateIv();
+                var encryptedContent = _securityService.Encrypt(serializedContent, iv);
+                await file.UploadTextAsync(encryptedContent);
+                file.Metadata.Add(IvMetadataKey, iv.ToBase64());
+                await file.SetMetadataAsync();
+            }
+            else {
+                await file.UploadTextAsync(serializedContent);
+            }
         }
 
         protected virtual string ConvertToJson(TObject objectToStore) {

@@ -9,5 +9,6 @@ namespace EventSourcing.Poc.EventSourcing.Command {
         Task Send(ICommandWrapper commandWrapper);
 
         void RegisterMessageHandler(Func<ICommandWrapper, CancellationToken, Task> handler, RegisterHandlerOptions handlerOptions);
+        void RegisterMessageHandler(Func<ICommandWrapper, CancellationToken, Task> handler);
     }
 }

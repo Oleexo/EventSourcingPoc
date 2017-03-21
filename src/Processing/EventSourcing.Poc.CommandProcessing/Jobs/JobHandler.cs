@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using EventSourcing.Poc.EventSourcing.Jobs;
 using EventSourcing.Poc.EventSourcing.Utils;
 using EventSourcing.Poc.EventSourcing.Wrapper;
+using EventSourcing.Poc.Processing.Commons.Security;
 using EventSourcing.Poc.Processing.Options;
 using Microsoft.Extensions.Options;
 using Microsoft.WindowsAzure.Storage;
@@ -18,7 +19,7 @@ namespace EventSourcing.Poc.Processing.Jobs {
         private readonly CloudTable _jobTable;
         private readonly IJsonConverter _jsonConverter;
 
-        public JobHandler(IOptions<JobHandlerOptions> options, IJsonConverter jsonConverter) {
+        public JobHandler(IOptions<JobHandlerOptions> options, IJsonConverter jsonConverter, ISecurityService securityService) {
             _jsonConverter = jsonConverter;
             var cloudTableClient = CloudStorageAccount.Parse(options.Value.ConnectionString)
                 .CreateCloudTableClient();
@@ -29,7 +30,7 @@ namespace EventSourcing.Poc.Processing.Jobs {
             _commandTable.CreateIfNotExistsAsync().Wait();
             _eventTable.CreateIfNotExistsAsync().Wait();
             _jobArchive = new JobArchive(options.Value.ConnectionString, options.Value.ArchiveStorageName,
-                options.Value.ArchiveTableName, jsonConverter);
+                options.Value.ArchiveTableName, jsonConverter, securityService);
         }
 
 

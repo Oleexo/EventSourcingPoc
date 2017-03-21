@@ -5,6 +5,8 @@
     <PackageTargetFallback>portable-net451+win8</PackageTargetFallback>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug Local|AnyCPU'" />
+
   <ItemGroup>
     <PackageReference Include="WindowsAzure.Storage" Version="8.1.1" />
   </ItemGroup>

@@ -9,6 +9,7 @@ using EventSourcing.Poc.EventSourcing.Jobs;
 using EventSourcing.Poc.EventSourcing.Mutex;
 using EventSourcing.Poc.EventSourcing.Utils;
 using EventSourcing.Poc.Processing;
+using EventSourcing.Poc.Processing.Commons.Security;
 using EventSourcing.Poc.Processing.Jobs;
 using EventSourcing.Poc.Processing.Mutex;
 using EventSourcing.Poc.Processing.Options;
@@ -57,6 +58,10 @@ namespace EventSourcing.Poc.CommandProcessing.Runner {
                 options.ConnectionString = _configurationRoot.GetSection("EventStore")["ConnectionString"];
                 options.Name = _configurationRoot.GetSection("EventStore")["Name"];
             });
+            serviceCollection.Configure<SecurityServiceOptions>(options => {
+                options.Encryption = bool.Parse(_configurationRoot.GetSection("Security")["Encryption"]);
+                options.Key = _configurationRoot.GetSection("Security")["Key"];
+            });
             serviceCollection.AddScoped<ICommandQueue, CommandQueue>();
             serviceCollection.AddScoped<IJsonConverter, NewtonsoftJsonConverter>();
             serviceCollection.AddScoped<IEventQueue, EventQueue>();
@@ -68,6 +73,8 @@ namespace EventSourcing.Poc.CommandProcessing.Runner {
             serviceCollection.AddScoped<CommandHandlerFactory>();
             serviceCollection.AddScoped<CommandProcessor>();
             serviceCollection.AddScoped<PostHandler>();
+            serviceCollection.AddScoped<ISecurityService, SecurityService>();
+
             var serviceProvider = serviceCollection.BuildServiceProvider();
             var commandQueue = serviceProvider.GetService<ICommandQueue>();
             Console.WriteLine("Start listening...");

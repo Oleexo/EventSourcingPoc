@@ -2,6 +2,7 @@
 using System.Threading.Tasks;
 using EventSourcing.Poc.EventSourcing.Jobs;
 using EventSourcing.Poc.EventSourcing.Utils;
+using EventSourcing.Poc.Processing.Commons.Security;
 using EventSourcing.Poc.Processing.Generic;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.File;
@@ -12,8 +13,9 @@ namespace EventSourcing.Poc.Processing.Jobs {
         private readonly CloudTable _archiveTable;
 
         public JobArchive(string storageConnectionString, string storageName, string archiveTableName,
-            IJsonConverter jsonConverter)
-            : base(storageConnectionString, storageName, jsonConverter) {
+            IJsonConverter jsonConverter,
+            ISecurityService securityService)
+            : base(storageConnectionString, storageName, jsonConverter, securityService) {
             _archiveTable = CloudStorageAccount.Parse(storageConnectionString)
                 .CreateCloudTableClient()
                 .GetTableReference(archiveTableName);

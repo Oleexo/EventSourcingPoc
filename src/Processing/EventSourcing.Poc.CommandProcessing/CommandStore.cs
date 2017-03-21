@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using EventSourcing.Poc.EventSourcing;
 using EventSourcing.Poc.EventSourcing.Utils;
 using EventSourcing.Poc.EventSourcing.Wrapper;
+using EventSourcing.Poc.Processing.Commons.Security;
 using EventSourcing.Poc.Processing.Generic;
 using EventSourcing.Poc.Processing.Options;
 using Microsoft.Extensions.Options;
@@ -11,8 +12,13 @@ using Microsoft.WindowsAzure.Storage.File;
 
 namespace EventSourcing.Poc.Processing {
     public class CommandStore : FileStore<ICommandWrapper>, ICommandStore {
-        public CommandStore(IOptions<CommandStoreOptions> options, IJsonConverter jsonConverter)
-            : base(options.Value.ConnectionString, options.Value.Name, jsonConverter) {
+        public CommandStore(IOptions<CommandStoreOptions> options, 
+            IJsonConverter jsonConverter, 
+            ISecurityService securityService)
+            : base(options.Value.ConnectionString, 
+                  options.Value.Name, 
+                  jsonConverter, 
+                  securityService) {
         }
 
         public async Task Save(ICommandWrapper commandWrapped) {

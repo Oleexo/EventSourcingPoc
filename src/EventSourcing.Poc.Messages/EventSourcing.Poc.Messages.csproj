@@ -4,4 +4,6 @@
     <TargetFramework>netstandard1.6</TargetFramework>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug Local|AnyCPU'" />
+
 </Project>

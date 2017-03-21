@@ -5,6 +5,8 @@
     <PackageTargetFallback>portable-net451+win8</PackageTargetFallback>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug Local|AnyCPU'" />
+
   <ItemGroup>
     <ProjectReference Include="..\..\..\lib\azure-service-bus-dotnet\src\Microsoft.Azure.ServiceBus\Microsoft.Azure.ServiceBus.csproj" />
     <ProjectReference Include="..\..\..\lib\Microsoft.Azure.StorageAccount\Microsoft.Azure.StorageAccount.csproj" />
@@ -13,6 +15,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Options" Version="1.1.1" />
+    <PackageReference Include="System.Security.Cryptography.Algorithms" Version="4.3.0" />
     <PackageReference Include="System.ValueTuple" Version="4.3.0" />
   </ItemGroup>
 
