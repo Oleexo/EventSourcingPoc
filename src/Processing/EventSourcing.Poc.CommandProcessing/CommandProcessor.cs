@@ -9,11 +9,11 @@ using EventSourcing.Poc.Messages;
 
 namespace EventSourcing.Poc.Processing {
     public class CommandProcessor {
-        private readonly CommandHandlerFactory _commandHandlerFactory;
+        private readonly ICommandHandlerFactory _commandHandlerFactory;
         private readonly IEventDispatcher _eventDispatcher;
         private readonly IJobHandler _jobHandler;
 
-        public CommandProcessor(CommandHandlerFactory commandHandlerFactory,
+        public CommandProcessor(ICommandHandlerFactory commandHandlerFactory,
             IEventDispatcher eventDispatcher,
             IJobHandler jobHandler) {
             _commandHandlerFactory = commandHandlerFactory;

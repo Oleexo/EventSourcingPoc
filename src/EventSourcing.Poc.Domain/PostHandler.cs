@@ -21,7 +21,6 @@ namespace EventSourcing.Poc.Domain {
         }
 
         public async Task<IReadOnlyCollection<IEvent>> Handle(AddToCategory command) {
-            Console.WriteLine("handle Add to category command.");
             return new List<IEvent> {
                 new AddedToCategory {
                     Id = command.Id,
@@ -36,36 +35,23 @@ namespace EventSourcing.Poc.Domain {
                 Firstname = "Anonymous",
                 Lastname = "Anonymous"
             };
-            using (var authorMutex = _entityMutexFactory.Create(author)) {
-                await authorMutex.LockAsync();
-                Console.WriteLine("handle create post command.");
-                return new List<IEvent> {
-                    new PostCreated(Guid.NewGuid(), command.Title, command.Content)
-                };
-            }
+            await _entityMutexFactory.CreateAndLock(author);
+            return new List<IEvent> {
+                new PostCreated(Guid.NewGuid(), command.Title, command.Content)
+            };
         }
 
         public async Task<IReadOnlyCollection<IAction>> Handle(AddedToCategory @event) {
-            Console.WriteLine("handle Added to category event.");
             return new List<IAction>();
         }
 
         public async Task<IReadOnlyCollection<IAction>> Handle(PostCreated @event) {
-            var author = new Author {
-                Id = Guid.Parse("10b7497e-6dfb-4add-a7eb-14c3b69feaad"),
-                Firstname = "Anonymous",
-                Lastname = "Anonymous"
+            return new List<IAction> {
+                new AddToCategory {
+                    Id = @event.Id,
+                    Category = "My Category"
+                }
             };
-            using (var authorMutex = _entityMutexFactory.Create(author)) {
-                await authorMutex.LockAsync();
-                Console.WriteLine("handle post created event.");
-                return new List<IAction> {
-                    new AddToCategory {
-                        Id = @event.Id,
-                        Category = "My Category"
-                    }
-                };
-            }
         }
     }
 }

@@ -6,5 +6,6 @@
         public string EventTableName { get; set; }
         public string ArchiveStorageName { get; set; }
         public string ArchiveTableName { get; set; }
+        public string ArchiveConnectionString { get; set; }
     }
 }

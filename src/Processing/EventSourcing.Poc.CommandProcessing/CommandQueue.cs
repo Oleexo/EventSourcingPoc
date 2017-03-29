@@ -1,4 +1,5 @@
-﻿using EventSourcing.Poc.EventSourcing.Command;
+﻿using System.Threading.Tasks;
+using EventSourcing.Poc.EventSourcing.Command;
 using EventSourcing.Poc.EventSourcing.Utils;
 using EventSourcing.Poc.EventSourcing.Wrapper;
 using EventSourcing.Poc.Processing.Commons.Security;

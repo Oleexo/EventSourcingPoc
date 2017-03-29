@@ -15,9 +15,10 @@ namespace EventSourcing.Poc.Processing.Jobs {
     public class JobHandler : IJobHandler, IJobFollower {
         private readonly CloudTable _commandTable;
         private readonly CloudTable _eventTable;
-        private readonly JobArchive _jobArchive;
+        private readonly Lazy<JobArchive> _jobArchive;
         private readonly CloudTable _jobTable;
         private readonly IJsonConverter _jsonConverter;
+        private JobArchive JobArchive => _jobArchive.Value;
 
         public JobHandler(IOptions<JobHandlerOptions> options, IJsonConverter jsonConverter, ISecurityService securityService) {
             _jsonConverter = jsonConverter;
@@ -29,13 +30,13 @@ namespace EventSourcing.Poc.Processing.Jobs {
             _jobTable.CreateIfNotExistsAsync().Wait();
             _commandTable.CreateIfNotExistsAsync().Wait();
             _eventTable.CreateIfNotExistsAsync().Wait();
-            _jobArchive = new JobArchive(options.Value.ConnectionString, options.Value.ArchiveStorageName,
-                options.Value.ArchiveTableName, jsonConverter, securityService);
+            _jobArchive = new Lazy<JobArchive>(() => new JobArchive(options.Value.ArchiveConnectionString, options.Value.ArchiveStorageName,
+                options.Value.ArchiveTableName, jsonConverter, securityService));
         }
 
 
         public async Task<IJob> GetInformation(string jobId) {
-            var jobArchived = await _jobArchive.Get(Guid.Parse(jobId));
+            var jobArchived = await JobArchive.Get(Guid.Parse(jobId));
             if (jobArchived != null) {
                 return jobArchived;
             }
@@ -45,7 +46,7 @@ namespace EventSourcing.Poc.Processing.Jobs {
                 return job;
             }
             job.IsDone = true;
-            await _jobArchive.Archive(job);
+            await JobArchive.Archive(job);
             await CleanupTables(job);
             return job;
         }

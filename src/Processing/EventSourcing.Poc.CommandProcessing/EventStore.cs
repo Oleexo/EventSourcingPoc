@@ -6,6 +6,7 @@ using EventSourcing.Poc.EventSourcing.Utils;
 using EventSourcing.Poc.EventSourcing.Wrapper;
 using EventSourcing.Poc.Processing.Commons.Security;
 using EventSourcing.Poc.Processing.Generic;
+using EventSourcing.Poc.Processing.Options;
 using Microsoft.Extensions.Options;
 using Microsoft.WindowsAzure.Storage.File;
 
@@ -40,10 +41,5 @@ namespace EventSourcing.Poc.Processing {
         protected override string CreateFileName(IEventWrapper @object) {
             return $"{@object.Id}.json";
         }
-    }
-
-    public class EventStoreOptions {
-        public string ConnectionString { get; set; }
-        public string Name { get; set; }
     }
 }

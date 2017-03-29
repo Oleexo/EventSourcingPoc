@@ -8,7 +8,11 @@ using EventSourcing.Poc.EventSourcing.Utils;
 using EventSourcing.Poc.Messages;
 
 namespace EventSourcing.Poc.Processing {
-    public class CommandHandlerFactory {
+    public interface ICommandHandlerFactory {
+        ICommandHandler<TCommand> Resolve<TCommand>() where TCommand : ICommand;
+    }
+
+    public class CommandHandlerFactory : ICommandHandlerFactory {
         private static IReadOnlyDictionary<Type, Type> _commandToCommandHandlers;
         private readonly IServiceProvider _serviceProvider;
 

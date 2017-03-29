@@ -13,6 +13,7 @@ using EventSourcing.Poc.Processing.Commons.Security;
 using EventSourcing.Poc.Processing.Jobs;
 using EventSourcing.Poc.Processing.Mutex;
 using EventSourcing.Poc.Processing.Options;
+using Microsoft.Azure.ServiceBus;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -26,6 +27,8 @@ namespace EventSourcing.Poc.CommandProcessing.Runner {
 
         public void Run() {
             CommandHandlerFactory.AddCommandHandler(typeof(PostHandler).GetTypeInfo().Assembly);
+            EventHandlerFactory.AddEventHandler(typeof(PostHandler).GetTypeInfo().Assembly);
+
             var serviceCollection = new ServiceCollection();
             serviceCollection.AddOptions();
             serviceCollection.Configure<EntityMutexFactoryOptions>(options => {
@@ -37,6 +40,7 @@ namespace EventSourcing.Poc.CommandProcessing.Runner {
                 options.JobTableName = _configurationRoot.GetSection("JobHandler")["JobTableName"];
                 options.CommandTableName = _configurationRoot.GetSection("JobHandler")["CommandTableName"];
                 options.EventTableName = _configurationRoot.GetSection("JobHandler")["EventTableName"];
+                options.ArchiveConnectionString = _configurationRoot.GetSection("JobHandler")["ArchiveConnectionString"];
                 options.ArchiveStorageName = _configurationRoot.GetSection("JobHandler")["ArchiveStorageName"];
                 options.ArchiveTableName = _configurationRoot.GetSection("JobHandler")["ArchiveTableName"];
             });
@@ -58,27 +62,35 @@ namespace EventSourcing.Poc.CommandProcessing.Runner {
                 options.ConnectionString = _configurationRoot.GetSection("EventStore")["ConnectionString"];
                 options.Name = _configurationRoot.GetSection("EventStore")["Name"];
             });
+            serviceCollection.Configure<CommandStoreOptions>(options => {
+                options.ConnectionString = _configurationRoot.GetSection("CommandStore")["ConnectionString"];
+                options.Name = _configurationRoot.GetSection("CommandStore")["Name"];
+            });
             serviceCollection.Configure<SecurityServiceOptions>(options => {
                 options.Encryption = bool.Parse(_configurationRoot.GetSection("Security")["Encryption"]);
                 options.Key = _configurationRoot.GetSection("Security")["Key"];
             });
             serviceCollection.AddScoped<ICommandQueue, CommandQueue>();
+            serviceCollection.AddScoped<ICommandStore, CommandStore>();
             serviceCollection.AddScoped<IJsonConverter, NewtonsoftJsonConverter>();
-            serviceCollection.AddScoped<IEventQueue, EventQueue>();
             serviceCollection.AddScoped<IEventStore, EventStore>();
             serviceCollection.AddScoped<IJobHandler, JobHandler>();
             serviceCollection.AddScoped<IEventDispatcher, EventDispatcher>();
             serviceCollection.AddScoped<IEntityMutexFactory, EntityMutexFactory>();
-            serviceCollection.AddScoped<IMutexGarbageCollector, MutexGarbageCollector>();
-            serviceCollection.AddScoped<CommandHandlerFactory>();
+            serviceCollection.AddScoped<IMutexCollector, MutexCollector>();
+            serviceCollection.AddScoped<ICommandHandlerFactory, CommandHandlerFactory>();
             serviceCollection.AddScoped<CommandProcessor>();
             serviceCollection.AddScoped<PostHandler>();
             serviceCollection.AddScoped<ISecurityService, SecurityService>();
+            serviceCollection.AddScoped<IEventProcessor, EventProcessor>();
+            serviceCollection.AddScoped<IEventHandlerFactory, EventHandlerFactory>();
+            serviceCollection.AddScoped<IActionDispatcher, ActionDispatcher>();
 
-            var serviceProvider = serviceCollection.BuildServiceProvider();
+            IServiceProvider serviceProvider = serviceCollection.BuildServiceProvider();
             var commandQueue = serviceProvider.GetService<ICommandQueue>();
             Console.WriteLine("Start listening...");
             commandQueue.RegisterMessageHandler(async (wrapper, token) => {
+                Console.WriteLine("Message receive :" + wrapper.Id);
                 using (var scopedServiceProvider = serviceProvider.CreateScope()) {
                     var commandProcessor = scopedServiceProvider.ServiceProvider.GetService<CommandProcessor>();
                     var commandType = wrapper.GetType().GetTypeInfo().GetGenericArguments()[0];
@@ -86,8 +98,10 @@ namespace EventSourcing.Poc.CommandProcessing.Runner {
                         .GetMethod("Process")
                         .MakeGenericMethod(commandType)
                         .Invoke(commandProcessor, new object[] {wrapper});
-                    scopedServiceProvider.ServiceProvider.GetService<IMutexGarbageCollector>().Collect();
+                    scopedServiceProvider.ServiceProvider.GetService<IMutexCollector>().Collect();
                 }
+            }, new RegisterHandlerOptions {
+                MaxConcurrentCalls = 10
             });
         }
     }

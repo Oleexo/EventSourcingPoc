@@ -5,55 +5,55 @@ using EventSourcing.Poc.EventSourcing.Utils;
 using EventSourcing.Poc.EventSourcing.Wrapper;
 using EventSourcing.Poc.Processing.Commons.Security;
 using Microsoft.Azure.ServiceBus;
-using Microsoft.WindowsAzure.Storage.File;
 
 namespace EventSourcing.Poc.Processing.Generic {
-    public abstract class Queue<TWrapper> : FileStore<TWrapper> where TWrapper : class, IWrapper {
+    public abstract class Queue<TWrapper> where TWrapper : class, IWrapper {
         private readonly IJsonConverter _jsonConverter;
-        private readonly QueueClient _queueClient;
+        private readonly Lazy<QueueClient> _queueClient;
+        private readonly QueueStorage<TWrapper> _queueStorage;
 
-        public Queue(string queueConnectionString, string queueName,
+        protected Queue(string queueConnectionString, string queueName,
             string storageConnectionString, string storageName,
             IJsonConverter jsonConverter,
-            ISecurityService securityService)
-            : base(storageConnectionString, storageName, jsonConverter, securityService) {
+            ISecurityService securityService) {
             _jsonConverter = jsonConverter;
-            _queueClient = new QueueClient(queueConnectionString, queueName, ReceiveMode.ReceiveAndDelete);
+            _queueClient = new Lazy<QueueClient>(
+                () => new QueueClient(queueConnectionString, queueName, ReceiveMode.ReceiveAndDelete));
+            _queueStorage = new QueueStorage<TWrapper>(storageConnectionString, storageName, jsonConverter,
+                securityService);
         }
 
+        private QueueClient QueueClient => _queueClient.Value;
+
         public virtual async Task Send(TWrapper wrapper) {
-            await SaveAsync(wrapper);
+            await _queueStorage.Save(wrapper);
             var message = new QueueMessage {
                 Id = wrapper.Id
             };
             var serializedMessage = _jsonConverter.Serialize(message);
             var queueMessage = new Message(serializedMessage);
-            await _queueClient.SendAsync(queueMessage);
+            await QueueClient.SendAsync(queueMessage);
         }
 
         public virtual void RegisterMessageHandler(Func<TWrapper, CancellationToken, Task> handler,
             RegisterHandlerOptions handlerOptions) {
-            _queueClient.RegisterMessageHandler((message, token) => Handler(message, token, handler), handlerOptions);
+            QueueClient.RegisterMessageHandler((message, token) => Handler(message, token, handler), handlerOptions);
         }
 
         private async Task Handler(Message message, CancellationToken token,
             Func<TWrapper, CancellationToken, Task> handler) {
             var body = message.GetBody<string>();
-            var queueMessage = _jsonConverter.Deserialize<QueueMessage>(body);
-            var wrapper = await RetrieveAsync($"{queueMessage.Id}.json", true);
+            var wrapper = await ConvertBack(body, _jsonConverter, _queueStorage);
             await handler.Invoke(wrapper, token);
         }
 
+        public static async Task<TWrapper> ConvertBack(string message, IJsonConverter jsonConverter, QueueStorage<TWrapper> queueStorage) {
+            var queueMessage = jsonConverter.Deserialize<QueueMessage>(message);
+            return await queueStorage.Retrieve(queueMessage.Id.ToString(), true);
+        }
+
         public virtual void RegisterMessageHandler(Func<TWrapper, CancellationToken, Task> handler) {
-            _queueClient.RegisterMessageHandler((message, token) => Handler(message, token, handler));
-        }
-
-        protected override string CreateFileName(TWrapper @object) {
-            return $"{@object.Id}.json";
-        }
-
-        protected override Task<CloudFileDirectory> GetDestinationFolder(CloudFileShare fileShare) {
-            return Task.FromResult(fileShare.GetRootDirectoryReference());
+            QueueClient.RegisterMessageHandler((message, token) => Handler(message, token, handler));
         }
 
         private class QueueMessage {

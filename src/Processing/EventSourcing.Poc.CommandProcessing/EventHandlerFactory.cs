@@ -8,7 +8,7 @@ using EventSourcing.Poc.EventSourcing.Utils;
 using EventSourcing.Poc.Messages;
 
 namespace EventSourcing.Poc.Processing {
-    public class EventHandlerFactory {
+    public class EventHandlerFactory : IEventHandlerFactory {
         private static IReadOnlyDictionary<Type, Type> _eventToEventHandlers;
         private readonly IServiceProvider _serviceProvider;
 

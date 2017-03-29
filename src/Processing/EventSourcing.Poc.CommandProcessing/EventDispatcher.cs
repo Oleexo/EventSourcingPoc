@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using EventSourcing.Poc.EventSourcing;
 using EventSourcing.Poc.EventSourcing.Event;
@@ -13,13 +14,14 @@ namespace EventSourcing.Poc.Processing {
         private readonly IEventQueue _eventQueue;
         private readonly IEventStore _eventStore;
         private readonly IJobHandler _jobHandler;
+        private readonly IEventProcessor _eventProcessor;
 
         public EventDispatcher(IEventStore eventStore,
             IJobHandler jobHandler,
-            IEventQueue eventQueue) {
+            IEventProcessor eventProcessor) {
             _eventStore = eventStore;
             _jobHandler = jobHandler;
-            _eventQueue = eventQueue;
+            _eventProcessor = eventProcessor;
         }
 
         public async Task Send<TCommand, TEvent>(ICommandWrapper<TCommand> parentCommand, TEvent @event)
@@ -36,8 +38,20 @@ namespace EventSourcing.Poc.Processing {
                 await _jobHandler.Associate(parentCommand, wrappedEvents);
             }
             await _eventStore.Save(wrappedEvents);
+            await ProcessEvents(wrappedEvents);
+        }
+
+        private async Task ProcessEvents(IEnumerable<IEventWrapper> wrappedEvents) {
+            var methodInfo = _eventProcessor.GetType().GetMethod("Process");
+            //Parallel.ForEach(wrappedEvents, async wrappedEvent => {
+            //    var wrappedEventType = wrappedEvent.GetType().GetTypeInfo().GetGenericArguments()[0];
+            //    await (Task)methodInfo.MakeGenericMethod(wrappedEventType)
+            //        .Invoke(_eventProcessor, new object[] { wrappedEvent });
+            //});
             foreach (var wrappedEvent in wrappedEvents) {
-                await _eventQueue.Send(wrappedEvent);
+                var wrappedEventType = wrappedEvent.GetType().GetTypeInfo().GenericTypeArguments[0];
+                await (Task)methodInfo.MakeGenericMethod(wrappedEventType)
+                    .Invoke(_eventProcessor, new object[] { wrappedEvent });
             }
         }
 

@@ -3,17 +3,19 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using EventSourcing.Poc.EventSourcing.Command;
+using EventSourcing.Poc.EventSourcing.Event;
 using EventSourcing.Poc.EventSourcing.Jobs;
 using EventSourcing.Poc.EventSourcing.Wrapper;
 using EventSourcing.Poc.Messages;
 
 namespace EventSourcing.Poc.Processing {
-    public class EventProcessor {
+
+    public class EventProcessor : IEventProcessor {
         private readonly IActionDispatcher _actionDispatcher;
-        private readonly EventHandlerFactory _eventHandlerFactory;
+        private readonly IEventHandlerFactory _eventHandlerFactory;
         private readonly IJobHandler _jobHandler;
 
-        public EventProcessor(EventHandlerFactory eventHandlerFactory, IJobHandler jobHandler,
+        public EventProcessor(IEventHandlerFactory eventHandlerFactory, IJobHandler jobHandler,
             IActionDispatcher actionDispatcher) {
             _eventHandlerFactory = eventHandlerFactory;
             _jobHandler = jobHandler;

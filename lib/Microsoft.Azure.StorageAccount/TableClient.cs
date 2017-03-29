@@ -4,6 +4,26 @@ using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
 
 namespace Microsoft.Azure.StorageAccount {
+    public class TableClient<TEntity> : TableClient where TEntity : ITableEntity {
+        public TableClient(string connectionString, string name) : base(connectionString, name) {
+        }
+
+        public TableClient(CloudTable cloudTable) : base(cloudTable) {
+        }
+
+        public Task<TableResult> Retrieve(string partitionKey, string rowKey,
+            List<string> selectColumns = null) {
+            return Retrieve<TEntity>(partitionKey, rowKey, selectColumns);
+        }
+
+        public Task<TableResult> Retrieve(string partitionKey,
+            string rowKey,
+            EntityResolver<TEntity> resolver,
+            List<string> selectColumns = null) {
+            return Retrieve<TEntity>(partitionKey, rowKey, resolver, selectColumns);
+        }
+    }
+
     public class TableClient {
         private readonly CloudTable _cloudTable;
 
@@ -21,7 +41,7 @@ namespace Microsoft.Azure.StorageAccount {
             return _cloudTable.CreateIfNotExistsAsync();
         }
 
-        public Task<TableResult> Retrieve<TEntity>(string partitionKey, string rowKey,
+        public virtual Task<TableResult> Retrieve<TEntity>(string partitionKey, string rowKey,
             List<string> selectColumns = null) where TEntity : ITableEntity {
             var retrieveOperation = TableOperation.Retrieve<TEntity>(partitionKey, rowKey, selectColumns);
             return ExecuteAsync(retrieveOperation);
